@@ -1,4 +1,4 @@
-package main
+package recordstore
 
 import (
 	pb "github.com/libp2p/go-libp2p-record/pb"
