@@ -4,7 +4,8 @@ import (
 	pb "github.com/libp2p/go-libp2p-record/pb"
 )
 
-type KadRecordStore struct {}
+type KadRecordStore struct{}
+
 /*
 func NewRecordStore() (*KadRecordStore, error) {
 	return &KadRecordStore{}, nil

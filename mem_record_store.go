@@ -5,13 +5,13 @@ import (
 )
 
 type MemRecordStore struct {
-	cache map[string]*pb.Record
+	cache     map[string]*pb.Record
 	keyToHash map[string]string
 }
 
 func NewRecordStore() (*MemRecordStore, error) {
 	rs := &MemRecordStore{
-		cache: make(map[string]*pb.Record),
+		cache:     make(map[string]*pb.Record),
 		keyToHash: make(map[string]string),
 	}
 	return rs, nil
@@ -35,4 +35,3 @@ func (rs *MemRecordStore) CacheStore(recordSigMultihash []byte, obj *pb.Record) 
 	rs.cache[string(recordSigMultihash)] = obj
 	return nil
 }
-

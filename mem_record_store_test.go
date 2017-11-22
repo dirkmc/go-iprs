@@ -1,16 +1,12 @@
 package recordstore
 
 import (
-	"fmt"
-	"log"
-	"testing"
 	"bytes"
-	crypto "github.com/libp2p/go-libp2p-crypto"
 	"crypto/rand"
-	//gologging "github.com/whyrusleeping/go-logging"
-	//ipld "github.com/ipfs/go-ipld-cbor"
-	//mh "github.com/multiformats/go-multihash"
+	"fmt"
+	crypto "github.com/libp2p/go-libp2p-crypto"
 	record "github.com/libp2p/go-libp2p-record"
+	"testing"
 )
 
 func TestGetPut(t *testing.T) {
