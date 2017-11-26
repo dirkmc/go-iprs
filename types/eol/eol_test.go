@@ -1,50 +1,14 @@
-package recordstore
+package recordstore_types_eol
 
 import (
-	"fmt"
-	"math/rand"
 	"testing"
 	"time"
-
-	pb "github.com/dirkmc/go-libp2p-kad-record-store/pb"
 	path "github.com/ipfs/go-ipfs/path"
-
-	proto "github.com/gogo/protobuf/proto"
+	pb "github.com/dirkmc/go-libp2p-kad-record-store/pb"
+	types "github.com/dirkmc/go-libp2p-kad-record-store/types"
 	u "github.com/ipfs/go-ipfs-util"
 	ci "github.com/libp2p/go-libp2p-crypto"
 )
-
-func shuffle(a []*pb.IprsEntry) {
-	for n := 0; n < 5; n++ {
-		for i, _ := range a {
-			j := rand.Intn(len(a))
-			a[i], a[j] = a[j], a[i]
-		}
-	}
-}
-
-func AssertSelected(r *pb.IprsEntry, from ...*pb.IprsEntry) error {
-	shuffle(from)
-	var vals [][]byte
-	for _, r := range from {
-		data, err := proto.Marshal(r)
-		if err != nil {
-			return err
-		}
-		vals = append(vals, data)
-	}
-
-	i, err := selectRecord(from, vals)
-	if err != nil {
-		return err
-	}
-
-	if from[i] != r {
-		return fmt.Errorf("selected incorrect record %d", i)
-	}
-
-	return nil
-}
 
 func TestOrdering(t *testing.T) {
 	// select timestamp so selection is deterministic
@@ -57,32 +21,32 @@ func TestOrdering(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	e1, err := CreateRoutingEntryData(priv, path.Path("foo"), 1, ts.Add(time.Hour))
+	e1, err := NewRecord(priv, path.Path("foo"), 1, ts.Add(time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	e2, err := CreateRoutingEntryData(priv, path.Path("bar"), 2, ts.Add(time.Hour))
+	e2, err := NewRecord(priv, path.Path("bar"), 2, ts.Add(time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	e3, err := CreateRoutingEntryData(priv, path.Path("baz"), 3, ts.Add(time.Hour))
+	e3, err := NewRecord(priv, path.Path("baz"), 3, ts.Add(time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	e4, err := CreateRoutingEntryData(priv, path.Path("cat"), 3, ts.Add(time.Hour*2))
+	e4, err := NewRecord(priv, path.Path("cat"), 3, ts.Add(time.Hour*2))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	e5, err := CreateRoutingEntryData(priv, path.Path("dog"), 4, ts.Add(time.Hour*3))
+	e5, err := NewRecord(priv, path.Path("dog"), 4, ts.Add(time.Hour*3))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	e6, err := CreateRoutingEntryData(priv, path.Path("fish"), 4, ts.Add(time.Hour*3))
+	e6, err := NewRecord(priv, path.Path("fish"), 4, ts.Add(time.Hour*3))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,4 +88,39 @@ func TestOrdering(t *testing.T) {
 	}
 
 	_ = []interface{}{e1, e2, e3, e4, e5, e6}
+}
+
+func TestValidation(t *testing.T) {
+	ts := time.Now()
+
+	// generate a key for signing the records
+	r := u.NewSeededRand(15) // generate deterministic keypair
+	priv, _, err := ci.GenerateKeyPairWithReader(ci.RSA, 1024, r)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	e1, err := NewRecord(priv, path.Path("foo"), 1, ts.Add(time.Hour * -1))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	e2, err := NewRecord(priv, path.Path("bar"), 1, ts.Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ValidateRecord("foo", e1)
+	if err == nil {
+		t.Fatal("Expected expired error")
+	}
+
+	err = ValidateRecord("bar", e2)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func AssertSelected(r *pb.IprsEntry, from ...*pb.IprsEntry) error {
+	return types.AssertSelected(SelectRecord, r, from)
 }
