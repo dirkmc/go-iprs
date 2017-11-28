@@ -6,6 +6,7 @@ import (
 	"time"
 
 	path "github.com/ipfs/go-ipfs/path"
+	logging "github.com/ipfs/go-log"
 
 	//routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
 	routing "github.com/libp2p/go-libp2p-routing"
@@ -18,6 +19,8 @@ import (
 	ci "github.com/libp2p/go-libp2p-crypto"
 )
 
+var log = logging.Logger("recordstore")
+
 // mpns (a multi-protocol NameSystem) implements generic IPFS naming.
 //
 // Uses several Resolvers:
@@ -27,12 +30,6 @@ import (
 //
 // It can only publish to: (a) IPFS routing naming.
 //
-
-type resolver interface {
-	// resolveOnce looks up a name once (without recursion).
-	resolveOnce(ctx context.Context, name string) (value path.Path, err error)
-}
-
 
 type mpns struct {
 	resolvers  map[string]resolver
@@ -48,7 +45,7 @@ func NewNameSystem(r routing.ValueStore, ds ds.Datastore, cachesize int) NameSys
 			"dht":      NewRoutingResolver(r, cachesize),
 		},
 		publishers: map[string]Publisher{
-			"/ipns/": NewRoutingPublisher(r, ds),
+			"/iprs/": NewRoutingPublisher(r, ds),
 		},
 	}
 }
@@ -70,18 +67,13 @@ func (ns *mpns) ResolveN(ctx context.Context, name string, depth int) (path.Path
 		return path.ParsePath("/ipfs/" + name)
 	}
 
-	return resolve(ctx, ns, name, depth, "/ipns/")
-}
-
-func resolve(ctx context.Context, r resolver, name string, depth int, prefixes ...string) (path.Path, error) {
-	var p path.Path
-	return p, nil
+	return resolve(ctx, ns, name, depth, "/iprs/")
 }
 
 // resolveOnce implements resolver.
 func (ns *mpns) resolveOnce(ctx context.Context, name string) (path.Path, error) {
-	if !strings.HasPrefix(name, "/ipns/") {
-		name = "/ipns/" + name
+	if !strings.HasPrefix(name, "/iprs/") {
+		name = "/iprs/" + name
 	}
 	segments := strings.SplitN(name, "/", 4)
 	if len(segments) < 3 || segments[0] != "" {
@@ -106,7 +98,7 @@ func (ns *mpns) resolveOnce(ctx context.Context, name string) (path.Path, error)
 
 // Publish implements Publisher
 func (ns *mpns) Publish(ctx context.Context, name ci.PrivKey, value path.Path) error {
-	err := ns.publishers["/ipns/"].Publish(ctx, name, value)
+	err := ns.publishers["/iprs/"].Publish(ctx, name, value)
 	if err != nil {
 		return err
 	}
@@ -115,7 +107,7 @@ func (ns *mpns) Publish(ctx context.Context, name ci.PrivKey, value path.Path) e
 }
 
 func (ns *mpns) PublishWithEOL(ctx context.Context, name ci.PrivKey, value path.Path, eol time.Time) error {
-	err := ns.publishers["/ipns/"].PublishWithEOL(ctx, name, value, eol)
+	err := ns.publishers["/iprs/"].PublishWithEOL(ctx, name, value, eol)
 	if err != nil {
 		return err
 	}

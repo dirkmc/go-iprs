@@ -8,7 +8,6 @@ import (
 	pb "github.com/dirkmc/go-libp2p-kad-record-store/pb"
 	types "github.com/dirkmc/go-libp2p-kad-record-store/types"
 	path "github.com/ipfs/go-ipfs/path"
-	logging "github.com/ipfs/go-log"
 
 	//routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
 	routing "github.com/libp2p/go-libp2p-routing"
@@ -23,8 +22,6 @@ import (
 	dhtpb "gx/ipfs/QmbxkgUceEcuSZ4ZdBA3x74VUDSSYjHYmmeEqkjxbtZ6Jg/go-libp2p-record/pb"
 	base32 "gx/ipfs/QmfVj3x4D6Jkq9SEoi5n2NmoUomLwoeiwnYz2KQa15wRw6/base32"
 )
-
-var log = logging.Logger("recordstore")
 
 const PublishPutValTimeout = time.Minute
 const DefaultRecordTTL = 24 * time.Hour
@@ -54,7 +51,6 @@ func (p *iprsPublisher) Publish(ctx context.Context, k ci.PrivKey, value path.Pa
 // PublishWithEOL is a temporary stand in for the iprs records implementation
 // see here for more details: https://github.com/ipfs/specs/tree/master/records
 func (p *iprsPublisher) PublishWithEOL(ctx context.Context, k ci.PrivKey, value path.Path, eol time.Time) error {
-
 	id, err := peer.IDFromPrivateKey(k)
 	if err != nil {
 		return err
@@ -70,13 +66,16 @@ func (p *iprsPublisher) PublishWithEOL(ctx context.Context, k ci.PrivKey, value 
 
 	// increment it
 	seqnum++
+	log.Debugf("Putting record with new seq no %d for %s", seqnum, iprskey)
 	return PutRecordToRouting(ctx, k, value, seqnum, eol, p.routing, id)
 }
 
 func (p *iprsPublisher) getPreviousSeqNo(ctx context.Context, iprskey string) (uint64, error) {
+	log.Debugf("getPreviousSeqNo %s", iprskey)
 	prevrec, err := p.ds.Get(NewKeyFromBinary([]byte(iprskey)))
 	if err != nil && err != ds.ErrNotFound {
 		// None found, lets start at zero!
+		log.Debugf("No previous seq no found for %s, start at 0", iprskey)
 		return 0, err
 	}
 	var val []byte
@@ -93,12 +92,15 @@ func (p *iprsPublisher) getPreviousSeqNo(ctx context.Context, iprskey string) (u
 
 		val = dhtrec.GetValue()
 	} else {
+		log.Debugf("Checking DHT for seq no for %s", iprskey)
+
 		// try and check the dht for a record
 		ctx, cancel := context.WithTimeout(ctx, time.Second*30)
 		defer cancel()
 
 		rv, err := p.routing.GetValue(ctx, iprskey)
 		if err != nil {
+			log.Debugf("No previous seq no found for %s, start at 0", iprskey)
 			// no such record found, start at zero!
 			return 0, nil
 		}
@@ -133,6 +135,7 @@ func PutRecordToRouting(ctx context.Context, k ci.PrivKey, value path.Path, seqn
 	defer cancel()
 
 	namekey, iprskey := IprsKeysForID(id)
+
 	entry, err := CreateRoutingEntryData(k, value, seqnum, eol)
 	if err != nil {
 		return err
@@ -198,7 +201,6 @@ func PublishEntry(ctx context.Context, r routing.ValueStore, iprskey string, rec
 	}
 
 	log.Debugf("Storing iprs entry at: %s", iprskey)
-	fmt.Println("*********** publish entry", iprskey)
 	// Store iprs entry at "/iprs/"+b58(h(pubkey))
 	return r.PutValue(timectx, iprskey, data)
 }

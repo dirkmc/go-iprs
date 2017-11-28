@@ -114,7 +114,7 @@ func (r *routingResolver) Resolve(ctx context.Context, name string) (path.Path, 
 
 // ResolveN implements Resolver.
 func (r *routingResolver) ResolveN(ctx context.Context, name string, depth int) (path.Path, error) {
-	return resolve(ctx, r, name, depth, "/ipns/")
+	return resolve(ctx, r, name, depth, "/iprs/")
 }
 
 // resolveOnce implements resolver. Uses the IPFS routing system to
@@ -126,7 +126,7 @@ func (r *routingResolver) resolveOnce(ctx context.Context, name string) (path.Pa
 		return cached, nil
 	}
 
-	name = strings.TrimPrefix(name, "/ipns/")
+	name = strings.TrimPrefix(name, "/iprs/")
 	hash, err := mh.FromB58String(name)
 	if err != nil {
 		// name should be a multihash. if it isn't, error out here.
@@ -135,16 +135,16 @@ func (r *routingResolver) resolveOnce(ctx context.Context, name string) (path.Pa
 	}
 
 	// use the routing system to get the name.
-	// /ipns/<name>
-	h := []byte("/ipns/" + string(hash))
+	// /iprs/<name>
+	h := []byte("/iprs/" + string(hash))
 
 	var entry *pb.IprsEntry
 	var pubkey ci.PubKey
 
 	resp := make(chan error, 2)
 	go func() {
-		ipnsKey := string(h)
-		val, err := r.routing.GetValue(ctx, ipnsKey)
+		iprsKey := string(h)
+		val, err := r.routing.GetValue(ctx, iprsKey)
 		if err != nil {
 			log.Warning("RoutingResolve get failed.")
 			resp <- err
