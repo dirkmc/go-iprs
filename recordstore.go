@@ -8,15 +8,15 @@ import (
 	path "github.com/ipfs/go-ipfs/path"
 	logging "github.com/ipfs/go-log"
 
-	//routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
-	routing "github.com/libp2p/go-libp2p-routing"
-	//ds "gx/ipfs/QmVSase1JP7cq9QkPT46oNwdp9pT6kBkG3oqS14y3QcZjG/go-datastore"
-	ds "github.com/ipfs/go-datastore"
+	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
+	//routing "github.com/libp2p/go-libp2p-routing"
+	ds "gx/ipfs/QmVSase1JP7cq9QkPT46oNwdp9pT6kBkG3oqS14y3QcZjG/go-datastore"
+	//ds "github.com/ipfs/go-datastore"
 
-	peer "github.com/libp2p/go-libp2p-peer"
-	//peer "gx/ipfs/QmXYjuNuxVzXKJCfWasQk1RqkhVLDM9jtUKhqc2WPQmFSB/go-libp2p-peer"
-	//ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
-	ci "github.com/libp2p/go-libp2p-crypto"
+	peer "gx/ipfs/QmXYjuNuxVzXKJCfWasQk1RqkhVLDM9jtUKhqc2WPQmFSB/go-libp2p-peer"
+	//peer "github.com/libp2p/go-libp2p-peer"
+	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
+	//ci "github.com/libp2p/go-libp2p-crypto"
 )
 
 var log = logging.Logger("recordstore")

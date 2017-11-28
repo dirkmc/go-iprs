@@ -52,42 +52,46 @@ func TestOrdering(t *testing.T) {
 	}
 
 	// e1 is the only record, i hope it gets this right
-	err = AssertSelected(e1, e1)
+	err = assertSelected(e1, e1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// e2 has the highest sequence number
-	err = AssertSelected(e2, e1, e2)
+	err = assertSelected(e2, e1, e2)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// e3 has the highest sequence number
-	err = AssertSelected(e3, e1, e2, e3)
+	err = assertSelected(e3, e1, e2, e3)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// e4 has a higher timeout
-	err = AssertSelected(e4, e1, e2, e3, e4)
+	err = assertSelected(e4, e1, e2, e3, e4)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// e5 has the highest sequence number
-	err = AssertSelected(e5, e1, e2, e3, e4, e5)
+	err = assertSelected(e5, e1, e2, e3, e4, e5)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// e6 should be selected as its signauture will win in the comparison
-	err = AssertSelected(e6, e1, e2, e3, e4, e5, e6)
+	err = assertSelected(e6, e1, e2, e3, e4, e5, e6)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	_ = []interface{}{e1, e2, e3, e4, e5, e6}
+}
+
+func assertSelected(r *pb.IprsEntry, from ...*pb.IprsEntry) error {
+	return types.AssertSelected(SelectRecord, r, from)
 }
 
 func TestValidation(t *testing.T) {
@@ -119,8 +123,4 @@ func TestValidation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-}
-
-func AssertSelected(r *pb.IprsEntry, from ...*pb.IprsEntry) error {
-	return types.AssertSelected(SelectRecord, r, from)
 }
