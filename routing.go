@@ -8,8 +8,8 @@ import (
 
 	//pb "github.com/ipfs/go-ipfs/namesys/pb"
 	pb "github.com/dirkmc/go-libp2p-kad-record-store/pb"
-	path "github.com/ipfs/go-ipfs/path"
 	types "github.com/dirkmc/go-libp2p-kad-record-store/types"
+	path "github.com/ipfs/go-ipfs/path"
 
 	cid "gx/ipfs/QmNp85zy9RLrQ5oQD4hPyS39ezrrXpcaa7R4Y9kxdWQLLQ/go-cid"
 	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"

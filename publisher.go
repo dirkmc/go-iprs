@@ -255,8 +255,6 @@ func IprsKeysForID(id peer.ID) (name, iprs string) {
 	return namekey, iprskey
 }
 
-
-
 // Copied from https://github.com/ipfs/go-ipfs/blob/master/thirdparty/ds-help/key.go
 func NewKeyFromBinary(rawKey []byte) ds.Key {
 	buf := make([]byte, 1+base32.RawStdEncoding.EncodedLen(len(rawKey)))

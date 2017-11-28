@@ -42,7 +42,7 @@ func NewNameSystem(r routing.ValueStore, ds ds.Datastore, cachesize int) NameSys
 		resolvers: map[string]resolver{
 			//"dns":      newDNSResolver(),
 			//"proquint": new(ProquintResolver),
-			"dht":      NewRoutingResolver(r, cachesize),
+			"dht": NewRoutingResolver(r, cachesize),
 		},
 		publishers: map[string]Publisher{
 			"/iprs/": NewRoutingPublisher(r, ds),
