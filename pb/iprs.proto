@@ -6,6 +6,8 @@ message IprsEntry {
 		EOL = 0;
 		// setting a time range says "this record is valid between x and y"
 		TimeRange = 1;
+		// setting a Certificate says "this record is valid if signed by a certificate issued by this certificate"
+		Cert = 2;
 	}
 	required bytes value = 1;
 	required bytes signature = 2;
