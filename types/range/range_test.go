@@ -163,13 +163,13 @@ func TestOrdering(t *testing.T) {
 	}
 
 	// e8 has the higest expiration and lowest start date
-	err = AssertSelected(e7, e1, e2, e3, e4, e5, e6, e7, e8)
+	err = AssertSelected(e8, e1, e2, e3, e4, e5, e6, e7, e8)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// e9 should be selected as its signauture will win in the comparison
-	err = AssertSelected(e7, e1, e2, e3, e4, e5, e6, e7, e8, e9)
+	err = AssertSelected(e9, e1, e2, e3, e4, e5, e6, e7, e8, e9)
 	if err != nil {
 		t.Fatal(err)
 	}
