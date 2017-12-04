@@ -3,13 +3,13 @@ package recordstore
 import (
 	"context"
 	"errors"
+	iprscert "github.com/dirkmc/go-libp2p-kad-record-store/certificate"
 	pb "github.com/dirkmc/go-libp2p-kad-record-store/pb"
 	cert "github.com/dirkmc/go-libp2p-kad-record-store/types/cert"
 	eol "github.com/dirkmc/go-libp2p-kad-record-store/types/eol"
 	timeRange "github.com/dirkmc/go-libp2p-kad-record-store/types/range"
 	proto "github.com/gogo/protobuf/proto"
 	record "github.com/libp2p/go-libp2p-record"
-	iprscert "github.com/dirkmc/go-libp2p-kad-record-store/certificate"
 	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
 )
 

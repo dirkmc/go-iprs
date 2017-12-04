@@ -54,6 +54,8 @@ func TestValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Tests
+
 	// Sign record with CA cert signature
 	e1, err := NewRecord(caPk, caCert, path.Path("foo"), 1, ts.Add(time.Hour))
 	if err != nil {
@@ -68,7 +70,7 @@ func TestValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Sign with client cert signature
+	// Sign record with client cert signature
 	e2, err := NewRecord(pk, cert, path.Path("bar"), 1, ts.Add(time.Hour))
 	if err != nil {
 		t.Fatal(err)
