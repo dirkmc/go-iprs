@@ -3,6 +3,7 @@ package recordstore_cert
 import (
 	"context"
 	"crypto/x509"
+	"fmt"
 	"time"
 	logging "github.com/ipfs/go-log"
 	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
@@ -33,7 +34,7 @@ func getCertPath(certHash string) string {
 
 func (m *CertificateManager) PutCertificate(ctx context.Context, cert *x509.Certificate) (string, error) {
 	pemBytes := MarshalCertificate(cert)
-	certHash := string(u.Hash(pemBytes))
+	certHash := getCertificateHashFromBytes(pemBytes)
 
 	certKey := getCertPath(certHash)
 	log.Debugf("Putting certificate at %s", certKey)
@@ -49,6 +50,11 @@ func (m *CertificateManager) PutCertificate(ctx context.Context, cert *x509.Cert
 }
 
 func (m *CertificateManager) GetCertificate(ctx context.Context, certHash string) (*x509.Certificate, error) {
+	log.Debugf("GetCertificate(%s)", certHash)
+	if !u.IsValidHash(certHash) {
+		return nil, fmt.Errorf("Bad certificate hash: [%s]", certHash)
+	}
+
 	certKey := getCertPath(certHash)
 	log.Debugf("Fetching certificate at %s", certKey)
 

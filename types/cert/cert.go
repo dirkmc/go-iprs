@@ -4,17 +4,16 @@ import (
 	"bytes"
 	"context"
 	"crypto/x509"
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
-	mh "gx/ipfs/QmU9a9NV9RdPNwZQDYd5uKsm6N6LJLSvLbywDDYFbaaC6P/go-multihash"
 	pb "github.com/dirkmc/go-libp2p-kad-record-store/pb"
 	path "github.com/ipfs/go-ipfs/path"
 	logging "github.com/ipfs/go-log"
 	proto "github.com/gogo/protobuf/proto"
 	u "github.com/ipfs/go-ipfs-util"
-	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 	types "github.com/dirkmc/go-libp2p-kad-record-store/types"
 	iprscert "github.com/dirkmc/go-libp2p-kad-record-store/certificate"
 )
@@ -25,7 +24,7 @@ var ErrExpiredRecord = errors.New("expired record")
 
 var log = logging.Logger("recordstore.types.cert")
 
-func NewRecord(pk ci.PrivKey, cert *x509.Certificate, val path.Path, seq uint64, eol time.Time) (*pb.IprsEntry, error) {
+func NewRecord(pk *rsa.PrivateKey, cert *x509.Certificate, val path.Path, seq uint64, eol time.Time) (*pb.IprsEntry, error) {
 	entry := new(pb.IprsEntry)
 
 	entry.Value = []byte(val)
@@ -34,7 +33,7 @@ func NewRecord(pk ci.PrivKey, cert *x509.Certificate, val path.Path, seq uint64,
 	entry.Sequence = proto.Uint64(seq)
 	entry.Validity = []byte(u.FormatRFC3339(eol) + "\n" + iprscert.GetCertificateHash(cert))
 
-	sig, err := pk.Sign(types.RecordDataForSig(entry))
+	sig, err := iprscert.Sign(pk, types.RecordDataForSig(entry))
 	if err != nil {
 		return nil, err
 	}
@@ -106,42 +105,21 @@ func ValidateRecord(ctx context.Context, k string, entry *pb.IprsEntry, certMana
 	}
 
 	parts := strings.Split(k, "/")
-	if len(parts) < 3 || parts[0] != "iprs" {
+	if len(parts) < 3 || parts[1] != "iprs" {
 		return fmt.Errorf("Unrecognized key format: [%s]", k)
 	}
 
-	issuerCertHash := parts[2]
-	_, err = mh.FromB58String(issuerCertHash)
-	if err != nil {
-		// Should be a multihash. if it isn't, error out here.
-		log.Warningf("Bad issuer hash in key: [%s]", issuerCertHash)
-		return err
-	}
-
-	// TODO: Make GetCertificate calls run in parallel
-
-	// Certificates should be X509 certificates retrievable from ipfs
-	issuerCert, err := certManager.GetCertificate(ctx, issuerCertHash)
-	if err != nil {
-		return err
-	}
-
+	// Hashes should be X509 certificates retrievable from ipfs
 	certHash := valParts[1]
-	_, err = mh.FromB58String(certHash)
-	if err != nil {
-		// Should be a multihash. if it isn't, error out here.
-		log.Warningf("Bad issuer hash in validation data: [%s]", certHash)
-		return err
-	}
-
-	cert, err := certManager.GetCertificate(ctx, certHash)
+	issuerCertHash := parts[2]
+	cert, issuerCert, err := getCerts(ctx, certManager, certHash, issuerCertHash)
 	if err != nil {
 		return err
 	}
 
 	// Check that issuer issued the certificate
 	if err = iprscert.CheckSignatureFrom(cert, issuerCert); err != nil {
-		log.Warningf("Check signature parent failed for cert [%s] issued by [%s]: %v", certHash, issuerCertHash, err)
+		log.Warningf("Check signature parent failed for cert [%s] issued by cert [%s]: %v", certHash, issuerCertHash, err)
 		return err
 	}
 
@@ -151,5 +129,36 @@ func ValidateRecord(ctx context.Context, k string, entry *pb.IprsEntry, certMana
 	}
 
 	// Success
+	log.Debugf("Record validation successful %s", k)
 	return nil
+}
+
+func getCerts(ctx context.Context, certManager *iprscert.CertificateManager, certHash, issuerCertHash string) (*x509.Certificate, *x509.Certificate, error) {
+	var cert, issuerCert *x509.Certificate
+	resp := make(chan error, 2)
+
+	getCert := func(hash string, cType string, cPtr **x509.Certificate) {
+		c, err := certManager.GetCertificate(ctx, hash)
+		if err != nil {
+			log.Warningf("Failed to get %s [%s]", cType, hash)
+			resp <- err
+			return
+		}
+
+		*cPtr = c
+		resp <- nil
+	}
+
+	go getCert(certHash, "Certificate", &cert)
+	go getCert(issuerCertHash, "Issuer Certificate", &issuerCert)
+
+	var err error
+	for i := 0; i < 2; i++ {
+		err = <-resp
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	return cert, issuerCert, nil
 }
