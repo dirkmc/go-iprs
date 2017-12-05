@@ -54,7 +54,19 @@ func TestValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Tests
+	// Unrelated CA Certificate
+	unrelatedCaCert, _, err := generateCACertificate("unrelated ca cert")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unrelatedCaCertHash, err := certManager.PutCertificate(ctx, unrelatedCaCert)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+
+	// ****** Crypto Tests ****** //
 
 	// Sign record with CA cert signature
 	e1, err := NewRecord(caPk, caCert, path.Path("foo"), 1, ts.Add(time.Hour))
@@ -63,11 +75,20 @@ func TestValidation(t *testing.T) {
 	}
 
 	// Record is valid if the key is prefixed with the CA cert hash
+	// that signed the certificate
 	// /iprs/<ca cert hash>/any name
 	caCertKey := "/iprs/" + caCertHash + "/myIprsName"
 	err = ValidateRecord(ctx, caCertKey, e1, certManager)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	// Record is not valid if the key is prefixed with a different
+	// CA cert hash
+	unrelatedCaCertKey := "/iprs/" + unrelatedCaCertHash + "/myIprsName"
+	err = ValidateRecord(ctx, unrelatedCaCertKey, e1, certManager)
+	if err == nil {
+		t.Fatal("Failed to return error for validation with different cert")
 	}
 
 	// Sign record with client cert signature
@@ -77,10 +98,89 @@ func TestValidation(t *testing.T) {
 	}
 
 	// Record is valid if the key is prefixed with the CA cert hash
-	// /iprs/<ca cert hash>/any name
+	// that issued the signing certificate
+	// /iprs/<ca (issuing) cert hash>/any name
 	certKey := "/iprs/" + caCertHash + "/myDelegatedFriendsIprsName"
 	err = ValidateRecord(ctx, certKey, e2, certManager)
 	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Record is not valid if the signing key is unrelated to the cert
+	unrelatedPk, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e3, err := NewRecord(unrelatedPk, cert, path.Path("baz"), 1, ts.Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ValidateRecord(ctx, certKey, e3, certManager)
+	if err == nil {
+		t.Fatal(err)
+	}
+
+	// Record is not valid if the CA cert could not be retrieved
+	// from the network
+	tmpCaCert, tmpPk, err := generateCACertificate("temporary ca cert")
+	if err != nil {
+		t.Fatal(err)
+	}
+	e4, err := NewRecord(tmpPk, tmpCaCert, path.Path("cat"), 1, ts.Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Note: We never added the cert to the Certificate Manager
+	tmpCaCertKey := "/iprs/" + iprscert.GetCertificateHash(tmpCaCert) + "/somePath"
+	err = ValidateRecord(ctx, tmpCaCertKey, e4, certManager)
+	if err == nil {
+		t.Fatal(err)
+	}
+
+	// Record is not valid if the child cert could not be retrieved
+	// from the network (even though issuing CA cert can be)
+	tmpChildCert, tmpChildPk, err := generateChildCertificate("tmp child cert", caCert, caPk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e5, err := NewRecord(tmpChildPk, tmpChildCert, path.Path("dog"), 1, ts.Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Note: Issuing cert is in Certificate Manager but not child cert
+	tmpChildCertKey := "/iprs/" + caCertHash + "/somePath"
+	err = ValidateRecord(ctx, tmpChildCertKey, e5, certManager)
+	if err == nil {
+		t.Fatal(err)
+	}
+
+	// ****** IPRS Path Format Tests ****** //
+
+	// Fails to validate record with empty iprs path
+	err = ValidateRecord(ctx, "", e1, certManager)
+	if err == nil {
+		t.Fatal(err)
+	}
+
+	// Fails to validate record with invalid iprs path prefix
+	err = ValidateRecord(ctx, "wut/some/path", e1, certManager)
+	if err == nil {
+		t.Fatal(err)
+	}
+
+	// Fails to validate record no hash in iprs path
+	err = ValidateRecord(ctx, "/iprs/", e1, certManager)
+	if err == nil {
+		t.Fatal(err)
+	}
+	err = ValidateRecord(ctx, "/iprs//path", e1, certManager)
+	if err == nil {
+		t.Fatal(err)
+	}
+
+	// Fails to validate record with invalid hash in iprs path
+	err = ValidateRecord(ctx, "/iprs/notavalidhash/path", e1, certManager)
+	if err == nil {
 		t.Fatal(err)
 	}
 }
