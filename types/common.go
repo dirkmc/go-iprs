@@ -3,7 +3,7 @@ package recordstore_types
 import (
 	"bytes"
 	"fmt"
-	pb "github.com/dirkmc/go-libp2p-kad-record-store/pb"
+	pb "github.com/dirkmc/go-iprs/pb"
 	proto "github.com/gogo/protobuf/proto"
 )
 

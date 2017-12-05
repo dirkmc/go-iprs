@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 	path "github.com/ipfs/go-ipfs/path"
-	pb "github.com/dirkmc/go-libp2p-kad-record-store/pb"
-	types "github.com/dirkmc/go-libp2p-kad-record-store/types"
+	pb "github.com/dirkmc/go-iprs/pb"
+	types "github.com/dirkmc/go-iprs/types"
 	u "github.com/ipfs/go-ipfs-util"
 	ci "github.com/libp2p/go-libp2p-crypto"
 )

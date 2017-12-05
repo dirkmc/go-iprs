@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	pb "github.com/dirkmc/go-libp2p-kad-record-store/pb"
-	types "github.com/dirkmc/go-libp2p-kad-record-store/types"
+	pb "github.com/dirkmc/go-iprs/pb"
+	types "github.com/dirkmc/go-iprs/types"
 	path "github.com/ipfs/go-ipfs/path"
 
 	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"

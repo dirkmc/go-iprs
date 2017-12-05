@@ -12,7 +12,7 @@ import (
 
 	ds "gx/ipfs/QmVSase1JP7cq9QkPT46oNwdp9pT6kBkG3oqS14y3QcZjG/go-datastore"
 	dssync "gx/ipfs/QmVSase1JP7cq9QkPT46oNwdp9pT6kBkG3oqS14y3QcZjG/go-datastore/sync"
-	iprscert "github.com/dirkmc/go-libp2p-kad-record-store/certificate"
+	iprscert "github.com/dirkmc/go-iprs/certificate"
 	mockrouting "github.com/ipfs/go-ipfs/routing/mock"
 	path "github.com/ipfs/go-ipfs/path"
 	testutil "gx/ipfs/QmQgLZP9haZheimMHqqAjJh2LhRmNfEoZDfbtkpeMhi9xK/go-testutil"

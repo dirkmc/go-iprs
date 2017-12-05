@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"time"
-	pb "github.com/dirkmc/go-libp2p-kad-record-store/pb"
+	pb "github.com/dirkmc/go-iprs/pb"
 	path "github.com/ipfs/go-ipfs/path"
 	logging "github.com/ipfs/go-log"
 	proto "github.com/gogo/protobuf/proto"
 	u "github.com/ipfs/go-ipfs-util"
 	ci "github.com/libp2p/go-libp2p-crypto"
-	types "github.com/dirkmc/go-libp2p-kad-record-store/types"
+	types "github.com/dirkmc/go-iprs/types"
 )
 
 // ErrExpiredRecord should be returned when an Iprs record is

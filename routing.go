@@ -7,8 +7,8 @@ import (
 	"time"
 
 	//pb "github.com/ipfs/go-ipfs/namesys/pb"
-	pb "github.com/dirkmc/go-libp2p-kad-record-store/pb"
-	types "github.com/dirkmc/go-libp2p-kad-record-store/types"
+	pb "github.com/dirkmc/go-iprs/pb"
+	types "github.com/dirkmc/go-iprs/types"
 	path "github.com/ipfs/go-ipfs/path"
 
 	cid "gx/ipfs/QmNp85zy9RLrQ5oQD4hPyS39ezrrXpcaa7R4Y9kxdWQLLQ/go-cid"
