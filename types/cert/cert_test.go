@@ -10,8 +10,8 @@ import (
 	"crypto/x509/pkix"
 	"math/big"
 
-	ds "gx/ipfs/QmVSase1JP7cq9QkPT46oNwdp9pT6kBkG3oqS14y3QcZjG/go-datastore"
-	dssync "gx/ipfs/QmVSase1JP7cq9QkPT46oNwdp9pT6kBkG3oqS14y3QcZjG/go-datastore/sync"
+	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
+	dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
 	iprscert "github.com/dirkmc/go-iprs/certificate"
 	mockrouting "github.com/ipfs/go-ipfs/routing/mock"
 	path "github.com/ipfs/go-ipfs/path"
