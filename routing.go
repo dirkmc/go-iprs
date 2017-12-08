@@ -6,27 +6,21 @@ import (
 	"strings"
 	"time"
 
-	//pb "github.com/ipfs/go-ipfs/namesys/pb"
 	pb "github.com/dirkmc/go-iprs/pb"
-	types "github.com/dirkmc/go-iprs/types"
 	path "github.com/ipfs/go-ipfs/path"
-
 	cid "gx/ipfs/QmNp85zy9RLrQ5oQD4hPyS39ezrrXpcaa7R4Y9kxdWQLLQ/go-cid"
 	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
-	//routing "github.com/libp2p/go-libp2p-routing"
 	u "gx/ipfs/QmSU6eubNdhXjFBJBSksTp8kv8YRub8mGAPv8tVJHmL2EU/go-ipfs-util"
 	mh "gx/ipfs/QmU9a9NV9RdPNwZQDYd5uKsm6N6LJLSvLbywDDYFbaaC6P/go-multihash"
 	lru "gx/ipfs/QmVYxfoJQiZijTgPNHCHgHELvQpbsJNTg6Crmc3dQkj3yy/golang-lru"
 	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
-	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
-	//ci "github.com/libp2p/go-libp2p-crypto"
 )
 
 // routingResolver implements NSResolver for the main IPFS SFS-like naming
 type routingResolver struct {
 	routing routing.ValueStore
-
 	cache *lru.Cache
+	verifier *RecordFactory
 }
 
 func (r *routingResolver) cacheGet(name string) (path.Path, bool) {
@@ -89,7 +83,7 @@ type cacheEntry struct {
 // to implement SFS-like naming on top.
 // cachesize is the limit of the number of entries in the lru cache. Setting it
 // to '0' will disable caching.
-func NewRoutingResolver(route routing.ValueStore, cachesize int) *routingResolver {
+func NewRoutingResolver(route routing.ValueStore, verifier *RecordFactory, cachesize int) *routingResolver {
 	if route == nil {
 		panic("attempt to create resolver with nil routing system")
 	}
@@ -102,6 +96,7 @@ func NewRoutingResolver(route routing.ValueStore, cachesize int) *routingResolve
 	return &routingResolver{
 		routing: route,
 		cache:   cache,
+		verifier: verifier,
 	}
 }
 
@@ -117,73 +112,46 @@ func (r *routingResolver) ResolveN(ctx context.Context, name string, depth int) 
 
 // resolveOnce implements resolver. Uses the IPFS routing system to
 // resolve SFS-like names.
-func (r *routingResolver) resolveOnce(ctx context.Context, name string) (path.Path, error) {
-	log.Debugf("RoutingResolve: '%s'", name)
-	cached, ok := r.cacheGet(name)
+func (r *routingResolver) resolveOnce(ctx context.Context, iprsKey string) (path.Path, error) {
+	log.Debugf("RoutingResolve: '%s'", iprsKey)
+	cached, ok := r.cacheGet(iprsKey)
 	if ok {
 		return cached, nil
 	}
 
-	name = strings.TrimPrefix(name, "/iprs/")
-	hash, err := mh.FromB58String(name)
+	// The key is in the format /iprs/<hash>[/somepath]
+	iprsKeyParts := strings.Split(iprsKey, "/")
+	if len(iprsKeyParts) < 3 || iprsKeyParts[1] != "iprs" {
+		return "", fmt.Errorf("Unrecognized IPRS key format: [%s]", iprsKey)
+	}
+
+	// The hash should be a multihash
+	keyHash := iprsKeyParts[2]
+	if !u.IsValidHash(keyHash) {
+		log.Warningf("RoutingResolve: Bad IPRS key hash: [%s]", keyHash)
+		return "", fmt.Errorf("Bad IPRS key hash: [%s]", keyHash)
+	}
+
+	// Use the routing system to get the entry
+	val, err := r.routing.GetValue(ctx, iprsKey)
 	if err != nil {
-		// name should be a multihash. if it isn't, error out here.
-		log.Warningf("RoutingResolve: bad input hash: [%s]\n", name)
+		log.Warningf("RoutingResolve get failed for %s", iprsKey)
 		return "", err
 	}
 
-	// use the routing system to get the name.
-	// /iprs/<name>
-	h := []byte("/iprs/" + string(hash))
-
-	var entry *pb.IprsEntry
-	var pubkey ci.PubKey
-
-	resp := make(chan error, 2)
-	go func() {
-		iprsKey := string(h)
-		val, err := r.routing.GetValue(ctx, iprsKey)
-		if err != nil {
-			log.Warning("RoutingResolve get failed.")
-			resp <- err
-			return
-		}
-
-		entry = new(pb.IprsEntry)
-		err = proto.Unmarshal(val, entry)
-		if err != nil {
-			resp <- err
-			return
-		}
-
-		resp <- nil
-	}()
-
-	go func() {
-		// name should be a public key retrievable from ipfs
-		pubk, err := routing.GetPublicKey(r.routing, ctx, hash)
-		if err != nil {
-			resp <- err
-			return
-		}
-
-		pubkey = pubk
-		resp <- nil
-	}()
-
-	for i := 0; i < 2; i++ {
-		err = <-resp
-		if err != nil {
-			return "", err
-		}
+	entry := new(pb.IprsEntry)
+	err = proto.Unmarshal(val, entry)
+	if err != nil {
+		log.Warningf("Failed to unmarshal entry at %s", iprsKey)
+		return "", err
 	}
 
-	// check sig with pk
-	if ok, err := pubkey.Verify(types.RecordDataForSig(entry), entry.GetSignature()); err != nil || !ok {
-		return "", fmt.Errorf("Invalid value. Not signed by PrivateKey corresponding to %v", pubkey)
+	// Verify record signatures etc are correct
+	err = r.verifier.Verify(ctx, iprsKey, entry)
+	if err != nil {
+		log.Warningf("Failed to verify entry at %s", iprsKey)
+		return "", err
 	}
-
-	// ok sig checks out. this is a valid name.
 
 	// check for old style record:
 	valh, err := mh.Cast(entry.GetValue())
@@ -194,13 +162,13 @@ func (r *routingResolver) resolveOnce(ctx context.Context, name string) (path.Pa
 			return "", err
 		}
 
-		r.cacheSet(name, p, entry)
+		r.cacheSet(iprsKey, p, entry)
 		return p, nil
 	} else {
 		// Its an old style multihash record
 		log.Warning("Detected old style multihash record")
 		p := path.FromCid(cid.NewCidV0(valh))
-		r.cacheSet(name, p, entry)
+		r.cacheSet(iprsKey, p, entry)
 		return p, nil
 	}
 }

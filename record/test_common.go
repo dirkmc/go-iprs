@@ -1,4 +1,4 @@
-package recordstore_types
+package recordstore_record
 
 import (
 	"fmt"

@@ -3,22 +3,24 @@ package recordstore
 import (
 	"context"
 	"errors"
-	iprscert "github.com/dirkmc/go-iprs/certificate"
+	c "github.com/dirkmc/go-iprs/certificate"
 	pb "github.com/dirkmc/go-iprs/pb"
-	cert "github.com/dirkmc/go-iprs/types/cert"
-	eol "github.com/dirkmc/go-iprs/types/eol"
-	timeRange "github.com/dirkmc/go-iprs/types/range"
+	rec "github.com/dirkmc/go-iprs/record"
 	proto "github.com/gogo/protobuf/proto"
 	record "github.com/libp2p/go-libp2p-record"
 	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
 )
 
-// ErrUnrecognizedValidity is returned when an IprsEntry has an
-// unknown validity type.
-var ErrUnrecognizedValidity = errors.New("unrecognized validity type")
+// ErrUnrecognizedValidityType is returned when an IprsEntry has an
+// unknown record type.
+var ErrUnrecognizedValidityType = errors.New("unrecognized validity type")
 
-func NewIprsRecordValidator(ctx context.Context, r routing.ValueStore) *record.ValidChecker {
-	certManager := iprscert.NewCertificateManager(r)
+func NewRecordValidator() *record.ValidChecker {
+	validators := map[pb.IprsEntry_ValidityType]rec.RecordValidator{
+		pb.IprsEntry_EOL: rec.NewEolRecordValidator(),
+		pb.IprsEntry_TimeRange: rec.NewRangeRecordValidator(),
+		pb.IprsEntry_Cert: rec.NewCertRecordValidator(),
+	}
 
 	// Implements ValidatorFunc and verifies that the
 	// given 'val' is an IprsEntry and that that entry is valid.
@@ -28,22 +30,44 @@ func NewIprsRecordValidator(ctx context.Context, r routing.ValueStore) *record.V
 		if err != nil {
 			return err
 		}
-		switch entry.GetValidityType() {
-		case pb.IprsEntry_EOL:
-			return eol.ValidateRecord(k, entry)
-		case pb.IprsEntry_TimeRange:
-			return timeRange.ValidateRecord(k, entry)
-		case pb.IprsEntry_Cert:
-			// TODO: Where should context come from?
-			return cert.ValidateRecord(ctx, k, entry, certManager)
-		default:
-			return ErrUnrecognizedValidity
+
+		validator, ok := validators[entry.GetValidityType()]
+		if !ok {
+			return ErrUnrecognizedValidityType
 		}
-		return nil
+		return validator.ValidateRecord(k, entry)
 	}
 
 	return &record.ValidChecker{
 		Func: validateRecord,
 		Sign: true,
 	}
+}
+
+type RecordFactory struct {
+	managers map[pb.IprsEntry_ValidityType]rec.RecordManager
+}
+
+func NewRecordFactory(r routing.ValueStore) *RecordFactory {
+	certManager := c.NewCertificateManager(r)
+	pubkManager := rec.NewPublicKeyManager(r)
+
+	managers := map[pb.IprsEntry_ValidityType]rec.RecordManager{
+		pb.IprsEntry_EOL: rec.NewEolRecordManager(r, pubkManager),
+		pb.IprsEntry_TimeRange: rec.NewRangeRecordManager(r, pubkManager),
+		pb.IprsEntry_Cert: rec.NewCertRecordManager(r, certManager),
+	}
+
+	return &RecordFactory{
+		managers: managers,
+	}
+}
+
+// Verifies that the given record is correctly signed etc
+func (v *RecordFactory) Verify(ctx context.Context, iprsKey string, entry *pb.IprsEntry) error {
+	manager, ok := v.managers[entry.GetValidityType()]
+	if !ok {
+		return ErrUnrecognizedValidityType
+	}
+	return manager.VerifyRecord(ctx, iprsKey, entry)
 }

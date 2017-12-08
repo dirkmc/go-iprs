@@ -31,13 +31,9 @@ package recordstore
 
 import (
 	"errors"
-	"time"
-
 	context "context"
-
 	path "github.com/ipfs/go-ipfs/path"
-	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
-	//ci "github.com/libp2p/go-libp2p-crypto"
+	r "github.com/dirkmc/go-iprs/record"
 )
 
 const (
@@ -102,9 +98,11 @@ type Resolver interface {
 	ResolveN(ctx context.Context, name string, depth int) (value path.Path, err error)
 }
 
-// Publisher is an object capable of publishing particular names.
+// Publisher is an object capable of publishing a Record
 type Publisher interface {
-
+	// Publish establishes a name-value mapping.
+	Publish(ctx context.Context, iprsKey string, record r.Record) error
+/*
 	// Publish establishes a name-value mapping.
 	// TODO make this not PrivKey specific.
 	Publish(ctx context.Context, name ci.PrivKey, value path.Path) error
@@ -112,4 +110,5 @@ type Publisher interface {
 	// TODO: to be replaced by a more generic 'PublishWithValidity' type
 	// call once the records spec is implemented
 	PublishWithEOL(ctx context.Context, name ci.PrivKey, value path.Path, eol time.Time) error
+*/
 }

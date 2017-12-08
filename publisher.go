@@ -6,19 +6,15 @@ import (
 	"time"
 
 	pb "github.com/dirkmc/go-iprs/pb"
-	types "github.com/dirkmc/go-iprs/types"
-	path "github.com/ipfs/go-ipfs/path"
+	//path "github.com/ipfs/go-ipfs/path"
 
+	r "github.com/dirkmc/go-iprs/record"
 	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
-	//routing "github.com/libp2p/go-libp2p-routing"
-	u "gx/ipfs/QmSU6eubNdhXjFBJBSksTp8kv8YRub8mGAPv8tVJHmL2EU/go-ipfs-util"
+	//u "gx/ipfs/QmSU6eubNdhXjFBJBSksTp8kv8YRub8mGAPv8tVJHmL2EU/go-ipfs-util"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
-	//ds "github.com/ipfs/go-datastore"
-	peer "gx/ipfs/QmXYjuNuxVzXKJCfWasQk1RqkhVLDM9jtUKhqc2WPQmFSB/go-libp2p-peer"
-	//peer "github.com/libp2p/go-libp2p-peer"
+	//peer "gx/ipfs/QmXYjuNuxVzXKJCfWasQk1RqkhVLDM9jtUKhqc2WPQmFSB/go-libp2p-peer"
 	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
-	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
-	//ci "github.com/libp2p/go-libp2p-crypto"
+	//ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 	dhtpb "gx/ipfs/QmbxkgUceEcuSZ4ZdBA3x74VUDSSYjHYmmeEqkjxbtZ6Jg/go-libp2p-record/pb"
 	base32 "gx/ipfs/QmfVj3x4D6Jkq9SEoi5n2NmoUomLwoeiwnYz2KQa15wRw6/base32"
 )
@@ -43,31 +39,29 @@ func NewRoutingPublisher(route routing.ValueStore, ds ds.Datastore) *iprsPublish
 
 // Publish implements Publisher. Accepts a keypair and a value,
 // and publishes it out to the routing system
-func (p *iprsPublisher) Publish(ctx context.Context, k ci.PrivKey, value path.Path) error {
-	log.Debugf("Publish %s", value)
-	return p.PublishWithEOL(ctx, k, value, time.Now().Add(DefaultRecordTTL))
-}
-
-// PublishWithEOL is a temporary stand in for the iprs records implementation
-// see here for more details: https://github.com/ipfs/specs/tree/master/records
-func (p *iprsPublisher) PublishWithEOL(ctx context.Context, k ci.PrivKey, value path.Path, eol time.Time) error {
+//func (p *iprsPublisher) Publish(ctx context.Context, k ci.PrivKey, value path.Path) error {
+func (p *iprsPublisher) Publish(ctx context.Context, iprsKey string, record r.Record) error {
+	log.Debugf("Publish %s", iprsKey)
+	/*
 	id, err := peer.IDFromPrivateKey(k)
 	if err != nil {
 		return err
 	}
 
 	_, iprskey := IprsKeysForID(id)
-
+	*/
 	// get previous records sequence number
-	seqnum, err := p.getPreviousSeqNo(ctx, iprskey)
+	//seqnum, err := p.getPreviousSeqNo(ctx, iprskey)
+	seqnum, err := p.getPreviousSeqNo(ctx, iprsKey)
 	if err != nil {
 		return err
 	}
 
 	// increment it
 	seqnum++
-	log.Debugf("Putting record with new seq no %d for %s", seqnum, iprskey)
-	return PutRecordToRouting(ctx, k, value, seqnum, eol, p.routing, id)
+	log.Debugf("Putting record with new seq no %d for %s", seqnum, iprsKey)
+	//return PutRecordToRouting(ctx, k, value, seqnum, eol, p.routing, id)
+	return record.Publish(ctx, iprsKey, seqnum)
 }
 
 func (p *iprsPublisher) getPreviousSeqNo(ctx context.Context, iprskey string) (uint64, error) {
@@ -116,7 +110,7 @@ func (p *iprsPublisher) getPreviousSeqNo(ctx context.Context, iprskey string) (u
 
 	return e.GetSequence(), nil
 }
-
+/*
 // setting the TTL on published records is an experimental feature.
 // as such, i'm using the context to wire it through to avoid changing too
 // much code along the way.
@@ -146,7 +140,7 @@ func PutRecordToRouting(ctx context.Context, k ci.PrivKey, value path.Path, seqn
 		entry.Ttl = proto.Uint64(uint64(ttl.Nanoseconds()))
 	}
 
-	errs := make(chan error, 2) // At most two errors (IPNS, and public key)
+	errs := make(chan error, 2) // At most two errors (IPRS, and public key)
 
 	// Attempt to extract the public key from the ID
 	extractedPublicKey := id.ExtractPublicKey()
@@ -214,7 +208,7 @@ func CreateRoutingEntryData(pk ci.PrivKey, val path.Path, seq uint64, eol time.T
 	entry.Sequence = proto.Uint64(seq)
 	entry.Validity = []byte(u.FormatRFC3339(eol))
 
-	sig, err := pk.Sign(types.RecordDataForSig(entry))
+	sig, err := pk.Sign(rec.RecordDataForSig(entry))
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +216,6 @@ func CreateRoutingEntryData(pk ci.PrivKey, val path.Path, seq uint64, eol time.T
 	return entry, nil
 }
 
-/*
 // InitializeKeyspace sets the iprs record for the given key to
 // point to an empty directory.
 // TODO: this doesnt feel like it belongs here
@@ -247,14 +240,14 @@ func InitializeKeyspace(ctx context.Context, ds dag.DAGService, pub Publisher, p
 
 	return pub.Publish(ctx, key, path.FromCid(nodek))
 }
-*/
+
 func IprsKeysForID(id peer.ID) (name, iprs string) {
 	namekey := "/pk/" + string(id)
 	iprskey := "/iprs/" + string(id)
 
 	return namekey, iprskey
 }
-
+*/
 // Copied from https://github.com/ipfs/go-ipfs/blob/master/thirdparty/ds-help/key.go
 func NewKeyFromBinary(rawKey []byte) ds.Key {
 	buf := make([]byte, 1+base32.RawStdEncoding.EncodedLen(len(rawKey)))

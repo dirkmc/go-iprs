@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	r "github.com/dirkmc/go-iprs/record"
 	path "github.com/ipfs/go-ipfs/path"
 	logging "github.com/ipfs/go-log"
 
@@ -38,11 +39,12 @@ type mpns struct {
 
 // NewNameSystem will construct the IPFS naming system based on Routing
 func NewNameSystem(r routing.ValueStore, ds ds.Datastore, cachesize int) NameSystem {
+	factory := NewRecordFactory(r)
 	return &mpns{
 		resolvers: map[string]resolver{
 			//"dns":      newDNSResolver(),
 			//"proquint": new(ProquintResolver),
-			"dht": NewRoutingResolver(r, cachesize),
+			"dht": NewRoutingResolver(r, factory, cachesize),
 		},
 		publishers: map[string]Publisher{
 			"/iprs/": NewRoutingPublisher(r, ds),
@@ -97,15 +99,18 @@ func (ns *mpns) resolveOnce(ctx context.Context, name string) (path.Path, error)
 }
 
 // Publish implements Publisher
-func (ns *mpns) Publish(ctx context.Context, name ci.PrivKey, value path.Path) error {
-	err := ns.publishers["/iprs/"].Publish(ctx, name, value)
+//func (ns *mpns) Publish(ctx context.Context, name ci.PrivKey, value path.Path) error {
+func (ns *mpns) Publish(ctx context.Context, iprsKey string, record r.Record) error {
+	//err := ns.publishers["/iprs/"].Publish(ctx, name, value)
+	err := ns.publishers["/iprs/"].Publish(ctx, iprsKey, record)
 	if err != nil {
 		return err
 	}
-	ns.addToDHTCache(name, value, time.Now().Add(DefaultRecordTTL))
+	// TODO: What is the idea of this call? Don't get what it's doing
+	//ns.addToDHTCache(name, value, time.Now().Add(DefaultRecordTTL))
 	return nil
 }
-
+/*
 func (ns *mpns) PublishWithEOL(ctx context.Context, name ci.PrivKey, value path.Path, eol time.Time) error {
 	err := ns.publishers["/iprs/"].PublishWithEOL(ctx, name, value, eol)
 	if err != nil {
@@ -114,7 +119,7 @@ func (ns *mpns) PublishWithEOL(ctx context.Context, name ci.PrivKey, value path.
 	ns.addToDHTCache(name, value, eol)
 	return nil
 }
-
+*/
 func (ns *mpns) addToDHTCache(key ci.PrivKey, value path.Path, eol time.Time) {
 	rr, ok := ns.resolvers["dht"].(*routingResolver)
 	if !ok {
