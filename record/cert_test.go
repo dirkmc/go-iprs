@@ -61,18 +61,8 @@ func TestValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	caCertHash, err := certManager.PutCertificate(ctx, caCert)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	// Child of CA Certificate
 	cert, pk, err := generateChildCertificate("child cert", caCert, caPk)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = certManager.PutCertificate(ctx, cert)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,6 +87,7 @@ func TestValidation(t *testing.T) {
 	// Record is valid if the key is prefixed with the CA cert hash
 	// that signed the certificate
 	// /iprs/<ca cert hash>/any name
+	caCertHash := c.GetCertificateHash(caCert)
 	caCertKey := "/iprs/" + caCertHash + "/myIprsName"
 	err = certRecordManager.VerifyRecord(ctx, caCertKey, e1)
 	if err != nil {
