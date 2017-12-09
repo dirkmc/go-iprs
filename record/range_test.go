@@ -162,7 +162,7 @@ func TestRangeOrdering(t *testing.T) {
 }
 
 func assertRangeSelected(t *testing.T, r *pb.IprsEntry, from ...*pb.IprsEntry) {
-	err := AssertSelected(NewRangeRecordValidator().SelectRecord, r, from)
+	err := AssertSelected(NewRangeRecordChecker().SelectRecord, r, from)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +170,7 @@ func assertRangeSelected(t *testing.T, r *pb.IprsEntry, from ...*pb.IprsEntry) {
 
 func TestRangeValidation(t *testing.T) {
 	NewRecord := setupNewRangeRecordFunc(t)
-	ValidateRecord := NewRangeRecordValidator().ValidateRecord
+	ValidateRecord := NewRangeRecordChecker().ValidateRecord
 
 	var BeginningOfTime *time.Time
 	var EndOfTime *time.Time

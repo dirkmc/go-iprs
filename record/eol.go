@@ -63,20 +63,20 @@ func (r *EolRecord) Publish(ctx context.Context, iprsKey string, seq uint64) err
 }
 
 
-// ***** EolRecordValidator ***** //
-type EolRecordValidator struct {}
+// ***** EolRecordChecker ***** //
+type EolRecordChecker struct {}
 
-func NewEolRecordValidator() *EolRecordValidator {
-	return &EolRecordValidator{}
+func NewEolRecordChecker() *EolRecordChecker {
+	return &EolRecordChecker{}
 }
 
-func (v *EolRecordValidator) SelectRecord(recs []*pb.IprsEntry, vals [][]byte) (int, error) {
+func (v *EolRecordChecker) SelectRecord(recs []*pb.IprsEntry, vals [][]byte) (int, error) {
 	return EolSelectRecord(recs, vals, func(e *pb.IprsEntry) (string, error) {
 		return string(e.GetValidity()), nil
 	})
 }
 
-func (v *EolRecordValidator) ValidateRecord(k string, entry *pb.IprsEntry) error {
+func (v *EolRecordChecker) ValidateRecord(k string, entry *pb.IprsEntry) error {
 	return EolValidityCheck(string(entry.GetValidity()))
 }
 

@@ -18,8 +18,8 @@ import (
 
 // routingResolver implements NSResolver for the main IPFS SFS-like naming
 type routingResolver struct {
-	routing routing.ValueStore
-	cache *lru.Cache
+	routing  routing.ValueStore
+	cache    *lru.Cache
 	verifier *RecordFactory
 }
 
@@ -94,8 +94,8 @@ func NewRoutingResolver(route routing.ValueStore, verifier *RecordFactory, cache
 	}
 
 	return &routingResolver{
-		routing: route,
-		cache:   cache,
+		routing:  route,
+		cache:    cache,
 		verifier: verifier,
 	}
 }

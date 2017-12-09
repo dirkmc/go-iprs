@@ -77,7 +77,7 @@ func TestEolOrdering(t *testing.T) {
 }
 
 func assertEolSelected(t *testing.T, r *pb.IprsEntry, from ...*pb.IprsEntry) {
-	err := AssertSelected(NewEolRecordValidator().SelectRecord, r, from)
+	err := AssertSelected(NewEolRecordChecker().SelectRecord, r, from)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func assertEolSelected(t *testing.T, r *pb.IprsEntry, from ...*pb.IprsEntry) {
 
 func TestEolValidation(t *testing.T) {
 	NewRecord := setupNewEolRecordFunc(t)
-	ValidateRecord := NewEolRecordValidator().ValidateRecord
+	ValidateRecord := NewEolRecordChecker().ValidateRecord
 
 	ts := time.Now()
 

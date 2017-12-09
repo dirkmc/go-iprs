@@ -2,16 +2,16 @@ package recordstore
 
 import (
 	"context"
-//	"errors"
+	//	"errors"
 	"testing"
 	"time"
 
 	path "github.com/ipfs/go-ipfs/path"
-	mockrouting "github.com/ipfs/go-ipfs/routing/mock"
+	//mockrouting "github.com/ipfs/go-ipfs/routing/mock"
 	testutil "gx/ipfs/QmQgLZP9haZheimMHqqAjJh2LhRmNfEoZDfbtkpeMhi9xK/go-testutil"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
-//	peer "gx/ipfs/QmXYjuNuxVzXKJCfWasQk1RqkhVLDM9jtUKhqc2WPQmFSB/go-libp2p-peer"
+	//	peer "gx/ipfs/QmXYjuNuxVzXKJCfWasQk1RqkhVLDM9jtUKhqc2WPQmFSB/go-libp2p-peer"
 	rec "github.com/dirkmc/go-iprs/record"
 	u "github.com/ipfs/go-ipfs-util"
 )
@@ -19,9 +19,8 @@ import (
 func TestRoutingResolve(t *testing.T) {
 	ctx := context.Background()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
-	serv := mockrouting.NewServer()
 	id := testutil.RandIdentityOrFatal(t)
-	r := serv.ClientWithDatastore(context.Background(), id, dstore)
+	r := NewMockValueStore(context.Background(), id, dstore)
 	factory := NewRecordFactory(r)
 	pubkManager := rec.NewPublicKeyManager(r)
 	eolRecordManager := rec.NewEolRecordManager(r, pubkManager)
@@ -36,8 +35,7 @@ func TestRoutingResolve(t *testing.T) {
 
 	h := path.FromString("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
 
-	// select timestamp so selection is deterministic
-	ts := time.Unix(1000000, 0)
+	ts := time.Now().Add(time.Hour)
 	pubkBytes, err := pubk.Bytes()
 	if err != nil {
 		t.Fatal(err)
@@ -45,13 +43,13 @@ func TestRoutingResolve(t *testing.T) {
 	iprsKey := "/iprs/" + u.Hash(pubkBytes).B58String()
 	eolRecord := eolRecordManager.NewRecord(pk, h, ts.Add(time.Hour))
 	publisher.Publish(ctx, iprsKey, eolRecord)
-/*
-	pid, err := peer.IDFromPublicKey(pubk)
-	if err != nil {
-		t.Fatal(err)
-	}
-*/
-//	res, err := resolver.Resolve(context.Background(), pid.Pretty())
+	/*
+		pid, err := peer.IDFromPublicKey(pubk)
+		if err != nil {
+			t.Fatal(err)
+		}
+	*/
+	//	res, err := resolver.Resolve(context.Background(), pid.Pretty())
 	res, err := resolver.Resolve(context.Background(), iprsKey)
 	if err != nil {
 		t.Fatal(err)
@@ -61,6 +59,7 @@ func TestRoutingResolve(t *testing.T) {
 		t.Fatal("Got back incorrect value.")
 	}
 }
+
 /*
 func TestPrexistingExpiredRecord(t *testing.T) {
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())

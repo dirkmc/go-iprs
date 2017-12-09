@@ -29,21 +29,6 @@ func RecordDataForSig(r *pb.IprsEntry) []byte {
 		[]byte{})
 }
 
-func UnmarshalRecords(vals [][]byte) []*pb.IprsEntry {
-	var recs []*pb.IprsEntry
-	for _, v := range vals {
-		e := new(pb.IprsEntry)
-		err := proto.Unmarshal(v, e)
-		if err == nil {
-			recs = append(recs, e)
-		} else {
-			recs = append(recs, nil)
-		}
-	}
-
-	return recs
-}
-
 func PutEntryToRouting(ctx context.Context, r routing.ValueStore, iprsKey string, entry *pb.IprsEntry) error {
 	data, err := proto.Marshal(entry)
 	if err != nil {

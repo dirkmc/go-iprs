@@ -110,6 +110,7 @@ func (ns *mpns) Publish(ctx context.Context, iprsKey string, record r.Record) er
 	//ns.addToDHTCache(name, value, time.Now().Add(DefaultRecordTTL))
 	return nil
 }
+
 /*
 func (ns *mpns) PublishWithEOL(ctx context.Context, name ci.PrivKey, value path.Path, eol time.Time) error {
 	err := ns.publishers["/iprs/"].PublishWithEOL(ctx, name, value, eol)

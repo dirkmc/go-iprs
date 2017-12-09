@@ -85,14 +85,14 @@ func (r *RangeRecord) Publish(ctx context.Context, iprsKey string, seq uint64) e
 	return r.m.PublishRecord(ctx, iprsKey, entry, r.pk)
 }
 
-// ***** RangeRecordValidator ***** //
-type RangeRecordValidator struct {}
+// ***** RangeRecordChecker ***** //
+type RangeRecordChecker struct {}
 
-func NewRangeRecordValidator() *RangeRecordValidator {
-	return &RangeRecordValidator{}
+func NewRangeRecordChecker() *RangeRecordChecker {
+	return &RangeRecordChecker{}
 }
 
-func (v *RangeRecordValidator) SelectRecord(recs []*pb.IprsEntry, vals [][]byte) (int, error) {
+func (v *RangeRecordChecker) SelectRecord(recs []*pb.IprsEntry, vals [][]byte) (int, error) {
 	var best_seq uint64
 	best_i := -1
 
@@ -141,7 +141,7 @@ func (v *RangeRecordValidator) SelectRecord(recs []*pb.IprsEntry, vals [][]byte)
 	return best_i, nil
 }
 
-func (v *RangeRecordValidator) timeRange(r *pb.IprsEntry) (*[2]*time.Time, error) {
+func (v *RangeRecordChecker) timeRange(r *pb.IprsEntry) (*[2]*time.Time, error) {
 	timeRange := strings.Split(string(r.GetValidity()), "~")
 	if len(timeRange) != 2 {
 		return nil, errors.New("Invalid TimeRange record")
@@ -172,7 +172,7 @@ func (v *RangeRecordValidator) timeRange(r *pb.IprsEntry) (*[2]*time.Time, error
 }
 
 // ValidateRecord verifies that the given entry is valid.
-func (v *RangeRecordValidator) ValidateRecord(k string, entry *pb.IprsEntry) error {
+func (v *RangeRecordChecker) ValidateRecord(k string, entry *pb.IprsEntry) error {
 	t, err := v.timeRange(entry)
 	if err != nil {
 		log.Warning("Failed to parse IPRS Time Range record")

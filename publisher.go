@@ -43,12 +43,12 @@ func NewRoutingPublisher(route routing.ValueStore, ds ds.Datastore) *iprsPublish
 func (p *iprsPublisher) Publish(ctx context.Context, iprsKey string, record r.Record) error {
 	log.Debugf("Publish %s", iprsKey)
 	/*
-	id, err := peer.IDFromPrivateKey(k)
-	if err != nil {
-		return err
-	}
+		id, err := peer.IDFromPrivateKey(k)
+		if err != nil {
+			return err
+		}
 
-	_, iprskey := IprsKeysForID(id)
+		_, iprskey := IprsKeysForID(id)
 	*/
 	// get previous records sequence number
 	//seqnum, err := p.getPreviousSeqNo(ctx, iprskey)
@@ -110,6 +110,7 @@ func (p *iprsPublisher) getPreviousSeqNo(ctx context.Context, iprskey string) (u
 
 	return e.GetSequence(), nil
 }
+
 /*
 // setting the TTL on published records is an experimental feature.
 // as such, i'm using the context to wire it through to avoid changing too

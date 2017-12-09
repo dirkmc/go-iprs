@@ -151,18 +151,18 @@ func (r *CertRecord) Publish(ctx context.Context, iprsKey string, seq uint64) er
 }
 
 
-// ***** CertRecordValidator ***** //
-type CertRecordValidator struct {}
+// ***** CertRecordChecker ***** //
+type CertRecordChecker struct {}
 
-func NewCertRecordValidator() *CertRecordValidator {
-	return &CertRecordValidator{}
+func NewCertRecordChecker() *CertRecordChecker {
+	return &CertRecordChecker{}
 }
 
-func (v *CertRecordValidator) SelectRecord(recs []*pb.IprsEntry, vals [][]byte) (int, error) {
+func (v *CertRecordChecker) SelectRecord(recs []*pb.IprsEntry, vals [][]byte) (int, error) {
 	return EolSelectRecord(recs, vals, getCertEntryEol)
 }
 
-func (v *CertRecordValidator) ValidateRecord(iprsKey string, entry *pb.IprsEntry) error {
+func (v *CertRecordChecker) ValidateRecord(iprsKey string, entry *pb.IprsEntry) error {
 	_, err := getCertEntryEol(entry)
 	return err
 }

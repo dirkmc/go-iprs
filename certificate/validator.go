@@ -36,3 +36,9 @@ var CertificateValidator = &record.ValidChecker{
 	Func: ValidateCertificateRecord,
 	Sign: false,
 }
+
+// CertificateSelector just selects the first entry.
+// All valid certificate records will be equivalent.
+func CertificateSelector(k string, vals [][]byte) (int, error) {
+	return 0, nil
+}

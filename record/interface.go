@@ -9,7 +9,7 @@ type Record interface {
 	Publish(ctx context.Context, iprsKey string, seq uint64) error
 }
 
-type RecordValidator interface {
+type RecordChecker interface {
 	// Validates that the record has not expired etc
 	ValidateRecord(iprsKey string, entry *pb.IprsEntry) error
 	// Selects the best (most valid) record
