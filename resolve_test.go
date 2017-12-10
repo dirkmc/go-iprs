@@ -21,7 +21,7 @@ func TestRoutingResolve(t *testing.T) {
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
 	r := NewMockValueStore(context.Background(), id, dstore)
-	factory := NewRecordFactory(r)
+	factory := rec.NewRecordFactory(r)
 	pubkManager := rec.NewPublicKeyManager(r)
 	eolRecordManager := rec.NewEolRecordManager(r, pubkManager)
 
