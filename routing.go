@@ -14,13 +14,14 @@ import (
 	mh "gx/ipfs/QmU9a9NV9RdPNwZQDYd5uKsm6N6LJLSvLbywDDYFbaaC6P/go-multihash"
 	lru "gx/ipfs/QmVYxfoJQiZijTgPNHCHgHELvQpbsJNTg6Crmc3dQkj3yy/golang-lru"
 	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
+	rec "github.com/dirkmc/go-iprs/record"
 )
 
 // routingResolver implements NSResolver for the main IPFS SFS-like naming
 type routingResolver struct {
 	routing  routing.ValueStore
 	cache    *lru.Cache
-	verifier *RecordFactory
+	verifier *rec.RecordFactory
 }
 
 func (r *routingResolver) cacheGet(name string) (path.Path, bool) {
@@ -83,7 +84,7 @@ type cacheEntry struct {
 // to implement SFS-like naming on top.
 // cachesize is the limit of the number of entries in the lru cache. Setting it
 // to '0' will disable caching.
-func NewRoutingResolver(route routing.ValueStore, verifier *RecordFactory, cachesize int) *routingResolver {
+func NewRoutingResolver(route routing.ValueStore, verifier *rec.RecordFactory, cachesize int) *routingResolver {
 	if route == nil {
 		panic("attempt to create resolver with nil routing system")
 	}

@@ -8,16 +8,11 @@ import (
 	r "github.com/dirkmc/go-iprs/record"
 	path "github.com/ipfs/go-ipfs/path"
 	logging "github.com/ipfs/go-log"
-
 	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
-	//routing "github.com/libp2p/go-libp2p-routing"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
-	//ds "github.com/ipfs/go-datastore"
-
 	peer "gx/ipfs/QmXYjuNuxVzXKJCfWasQk1RqkhVLDM9jtUKhqc2WPQmFSB/go-libp2p-peer"
-	//peer "github.com/libp2p/go-libp2p-peer"
 	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
-	//ci "github.com/libp2p/go-libp2p-crypto"
+	rec "github.com/dirkmc/go-iprs/record"
 )
 
 var log = logging.Logger("recordstore")
@@ -39,7 +34,7 @@ type mpns struct {
 
 // NewNameSystem will construct the IPFS naming system based on Routing
 func NewNameSystem(r routing.ValueStore, ds ds.Datastore, cachesize int) NameSystem {
-	factory := NewRecordFactory(r)
+	factory := rec.NewRecordFactory(r)
 	return &mpns{
 		resolvers: map[string]resolver{
 			//"dns":      newDNSResolver(),

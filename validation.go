@@ -1,14 +1,11 @@
 package recordstore
 
 import (
-	"context"
 	"errors"
-	c "github.com/dirkmc/go-iprs/certificate"
 	pb "github.com/dirkmc/go-iprs/pb"
 	rec "github.com/dirkmc/go-iprs/record"
 	proto "github.com/gogo/protobuf/proto"
 	record "github.com/libp2p/go-libp2p-record"
-	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
 )
 
 // ErrUnrecognizedValidityType is returned when an IprsEntry has an
@@ -109,32 +106,4 @@ func NewRecordChecker() *RecordChecker {
 		},
 		selector: selectRecord,
 	}
-}
-
-type RecordFactory struct {
-	managers map[pb.IprsEntry_ValidityType]rec.RecordManager
-}
-
-func NewRecordFactory(r routing.ValueStore) *RecordFactory {
-	certManager := c.NewCertificateManager(r)
-	pubkManager := rec.NewPublicKeyManager(r)
-
-	managers := map[pb.IprsEntry_ValidityType]rec.RecordManager{
-		pb.IprsEntry_EOL:       rec.NewEolRecordManager(r, pubkManager),
-		pb.IprsEntry_TimeRange: rec.NewRangeRecordManager(r, pubkManager),
-		pb.IprsEntry_Cert:      rec.NewCertRecordManager(r, certManager),
-	}
-
-	return &RecordFactory{
-		managers: managers,
-	}
-}
-
-// Verifies that the given record is correctly signed etc
-func (v *RecordFactory) Verify(ctx context.Context, iprsKey string, entry *pb.IprsEntry) error {
-	manager, ok := v.managers[entry.GetValidityType()]
-	if !ok {
-		return ErrUnrecognizedValidityType
-	}
-	return manager.VerifyRecord(ctx, iprsKey, entry)
 }
