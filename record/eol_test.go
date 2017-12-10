@@ -12,6 +12,7 @@ import (
 	dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
 	mockrouting "github.com/ipfs/go-ipfs/routing/mock"
 	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
+	rsp "github.com/dirkmc/go-iprs/path"
 	testutil "gx/ipfs/QmQgLZP9haZheimMHqqAjJh2LhRmNfEoZDfbtkpeMhi9xK/go-testutil"
 )
 
@@ -31,12 +32,15 @@ func setupNewEolRecordFunc(t *testing.T) (func(uint64, time.Time) *pb.IprsEntry)
 	}
 
 	return func(seq uint64, eol time.Time) *pb.IprsEntry {
-		iprsKey := "/iprs/somehash"
-		err := eolRecordManager.NewRecord(pk, path.Path("foo"), eol).Publish(ctx, iprsKey, seq)
+		iprsKey, err := rsp.FromString("/iprs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5")
 		if err != nil {
 			t.Fatal(err)
 		}
-		eBytes, err := r.GetValue(ctx, iprsKey)
+		err = eolRecordManager.NewRecord(pk, path.Path("foo"), eol).Publish(ctx, iprsKey, seq)
+		if err != nil {
+			t.Fatal(err)
+		}
+		eBytes, err := r.GetValue(ctx, iprsKey.String())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -86,18 +90,22 @@ func assertEolSelected(t *testing.T, r *pb.IprsEntry, from ...*pb.IprsEntry) {
 func TestEolValidation(t *testing.T) {
 	NewRecord := setupNewEolRecordFunc(t)
 	ValidateRecord := NewEolRecordChecker().ValidateRecord
+	iprsKey, err := rsp.FromString("/iprs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	ts := time.Now()
 
 	e1 := NewRecord(1, ts.Add(time.Hour * -1))
 	e2 := NewRecord(1, ts.Add(time.Hour))
 
-	err := ValidateRecord("foo", e1)
+	err = ValidateRecord(iprsKey, e1)
 	if err == nil {
 		t.Fatal("Expected expired error")
 	}
 
-	err = ValidateRecord("foo", e2)
+	err = ValidateRecord(iprsKey, e2)
 	if err != nil {
 		t.Fatal(err)
 	}

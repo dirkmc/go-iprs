@@ -11,6 +11,7 @@ import (
 	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
 	path "github.com/ipfs/go-ipfs/path"
 	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
+	rsp "github.com/dirkmc/go-iprs/path"
 	u "github.com/ipfs/go-ipfs-util"
 	c "github.com/dirkmc/go-iprs/certificate"
 )
@@ -38,7 +39,7 @@ func (m *CertRecordManager) NewRecord(pk *rsa.PrivateKey, cert *x509.Certificate
 	}
 }
 
-func (m *CertRecordManager) PublishRecord(ctx context.Context, iprsKey string, entry *pb.IprsEntry, cert *x509.Certificate) error {
+func (m *CertRecordManager) PublishRecord(ctx context.Context, iprsKey rsp.IprsPath, entry *pb.IprsEntry, cert *x509.Certificate) error {
 	// Put the certificate and the record itself to routing
 	resp := make(chan error, 2)
 
@@ -61,7 +62,7 @@ func (m *CertRecordManager) PublishRecord(ctx context.Context, iprsKey string, e
 	return nil
 }
 
-func (m *CertRecordManager) VerifyRecord(ctx context.Context, iprsKey string, entry *pb.IprsEntry) error {
+func (m *CertRecordManager) VerifyRecord(ctx context.Context, iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
 	log.Debugf("Verifying record %s", iprsKey)
 
 	certHash, issuerCertHash, err := getCertEntryHashes(iprsKey, entry)
@@ -92,6 +93,7 @@ func (m *CertRecordManager) VerifyRecord(ctx context.Context, iprsKey string, en
 }
 
 func (m *CertRecordManager) getCerts(ctx context.Context, certHash, issuerCertHash string) (*x509.Certificate, *x509.Certificate, error) {
+	// TODO: Optimize for the case where the two cert hashes are the same
 	var cert, issuerCert *x509.Certificate
 	resp := make(chan error, 2)
 
@@ -132,7 +134,7 @@ type CertRecord struct {
 	eol time.Time
 }
 
-func (r *CertRecord) Publish(ctx context.Context, iprsKey string, seq uint64) error {
+func (r *CertRecord) Publish(ctx context.Context, iprsKey rsp.IprsPath, seq uint64) error {
 	entry := new(pb.IprsEntry)
 
 	entry.Value = []byte(r.val)
@@ -162,7 +164,7 @@ func (v *CertRecordChecker) SelectRecord(recs []*pb.IprsEntry, vals [][]byte) (i
 	return EolSelectRecord(recs, vals, getCertEntryEol)
 }
 
-func (v *CertRecordChecker) ValidateRecord(iprsKey string, entry *pb.IprsEntry) error {
+func (v *CertRecordChecker) ValidateRecord(iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
 	_, err := getCertEntryEol(entry)
 	return err
 }
@@ -171,7 +173,7 @@ func marshallCertEntryValidity(eol time.Time, cert *x509.Certificate) []byte {
 	return []byte(u.FormatRFC3339(eol) + "\n" + c.GetCertificateHash(cert))
 }
 
-func getCertEntryHashes(iprsKey string, entry *pb.IprsEntry) (string, string, error) {
+func getCertEntryHashes(iprsKey rsp.IprsPath, entry *pb.IprsEntry) (string, string, error) {
 	// The validity is in the format
 	// <EOL>\n<issuer cert hash>
 	validity := string(entry.GetValidity())
@@ -180,14 +182,8 @@ func getCertEntryHashes(iprsKey string, entry *pb.IprsEntry) (string, string, er
 		return "", "", fmt.Errorf("Unrecognized validity format: [%s]", validity)
 	}
 
-	// The key is in the format /iprs/<cert hash>/somepath
-	iprsKeyParts := strings.Split(iprsKey, "/")
-	if len(iprsKeyParts) < 3 || iprsKeyParts[1] != "iprs" {
-		return "", "", fmt.Errorf("Unrecognized IPRS key format: [%s]", iprsKey)
-	}
-
 	certHash := valParts[1]
-	issuerCertHash := iprsKeyParts[2]
+	issuerCertHash := iprsKey.GetHashString()
 
 	return certHash, issuerCertHash, nil
 }

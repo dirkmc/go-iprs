@@ -5,14 +5,15 @@ import (
 	"strings"
 	"time"
 
+	rsp "github.com/dirkmc/go-iprs/path"
 	r "github.com/dirkmc/go-iprs/record"
+	rec "github.com/dirkmc/go-iprs/record"
 	path "github.com/ipfs/go-ipfs/path"
 	logging "github.com/ipfs/go-log"
 	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
-	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	peer "gx/ipfs/QmXYjuNuxVzXKJCfWasQk1RqkhVLDM9jtUKhqc2WPQmFSB/go-libp2p-peer"
 	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
-	rec "github.com/dirkmc/go-iprs/record"
+	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 )
 
 var log = logging.Logger("recordstore")
@@ -72,8 +73,9 @@ func (ns *mpns) resolveOnce(ctx context.Context, name string) (path.Path, error)
 	if !strings.HasPrefix(name, "/iprs/") {
 		name = "/iprs/" + name
 	}
+
 	segments := strings.SplitN(name, "/", 4)
-	if len(segments) < 3 || segments[0] != "" {
+	if len(segments) < 3 || segments[0] != "" || !rsp.IsValid(name) {
 		log.Warningf("Invalid name syntax for %s", name)
 		return "", ErrResolveFailed
 	}
@@ -94,8 +96,7 @@ func (ns *mpns) resolveOnce(ctx context.Context, name string) (path.Path, error)
 }
 
 // Publish implements Publisher
-//func (ns *mpns) Publish(ctx context.Context, name ci.PrivKey, value path.Path) error {
-func (ns *mpns) Publish(ctx context.Context, iprsKey string, record r.Record) error {
+func (ns *mpns) Publish(ctx context.Context, iprsKey rsp.IprsPath, record r.Record) error {
 	//err := ns.publishers["/iprs/"].Publish(ctx, name, value)
 	err := ns.publishers["/iprs/"].Publish(ctx, iprsKey, record)
 	if err != nil {

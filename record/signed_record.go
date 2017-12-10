@@ -5,6 +5,7 @@ import (
 	"fmt"
 	pb "github.com/dirkmc/go-iprs/pb"
 	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
+	rsp "github.com/dirkmc/go-iprs/path"
 	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 )
 
@@ -20,7 +21,7 @@ func NewSignedRecordManager(r routing.ValueStore, m *PublicKeyManager) *SignedRe
 	}
 }
 
-func (m *SignedRecordManager) PublishRecord(ctx context.Context, iprsKey string, entry *pb.IprsEntry, pk ci.PrivKey) error {
+func (m *SignedRecordManager) PublishRecord(ctx context.Context, iprsKey rsp.IprsPath, entry *pb.IprsEntry, pk ci.PrivKey) error {
 	// Sign the record
 	sig, err := pk.Sign(RecordDataForSig(entry))
 	if err != nil {
@@ -48,7 +49,7 @@ func (m *SignedRecordManager) PublishRecord(ctx context.Context, iprsKey string,
 	return nil
 }
 
-func (m *SignedRecordManager) CheckPublicKeySignature(ctx context.Context, iprsKey string, entry *pb.IprsEntry) error {
+func (m *SignedRecordManager) CheckPublicKeySignature(ctx context.Context, iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
 	pubk, err := m.pubkManager.GetPublicKey(ctx, iprsKey)
 	if err != nil {
 		return err

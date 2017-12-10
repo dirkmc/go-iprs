@@ -17,13 +17,14 @@ import (
 	path "github.com/ipfs/go-ipfs/path"
 	pb "github.com/dirkmc/go-iprs/pb"
 	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
+	rsp "github.com/dirkmc/go-iprs/path"
 	testutil "gx/ipfs/QmQgLZP9haZheimMHqqAjJh2LhRmNfEoZDfbtkpeMhi9xK/go-testutil"
 	// gologging "github.com/whyrusleeping/go-logging"
 	// logging "github.com/ipfs/go-log"
 )
 
-func TestValidation(t *testing.T) {
-	// logging.SetAllLoggers(gologging.DEBUG)
+func TestCertRecordValidation(t *testing.T) {
+//	logging.SetAllLoggers(gologging.DEBUG)
 
 	ctx := context.Background()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
@@ -34,12 +35,15 @@ func TestValidation(t *testing.T) {
 	// Simplifies publishing a record to routing and then getting it out again
 	NewRecord := func() (func(*rsa.PrivateKey, *x509.Certificate, uint64, time.Time) *pb.IprsEntry) {
 		return func(pk *rsa.PrivateKey, cert *x509.Certificate, seq uint64, eol time.Time) *pb.IprsEntry {
-			iprsKey := "/iprs/somehash"
-			err := certRecordManager.NewRecord(pk, cert, path.Path("foo"), eol).Publish(ctx, iprsKey, seq)
+			iprsKey, err := rsp.FromString("/iprs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV")
 			if err != nil {
 				t.Fatal(err)
 			}
-			eBytes, err := r.GetValue(ctx, iprsKey)
+			err = certRecordManager.NewRecord(pk, cert, path.Path("foo"), eol).Publish(ctx, iprsKey, seq)
+			if err != nil {
+				t.Fatal(err)
+			}
+			eBytes, err := r.GetValue(ctx, iprsKey.String())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -88,7 +92,11 @@ func TestValidation(t *testing.T) {
 	// that signed the certificate
 	// /iprs/<ca cert hash>/any name
 	caCertHash := c.GetCertificateHash(caCert)
-	caCertKey := "/iprs/" + caCertHash + "/myIprsName"
+	caCertKeyStr := "/iprs/" + caCertHash + "/myIprsName"
+	caCertKey, err := rsp.FromString(caCertKeyStr)
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = certRecordManager.VerifyRecord(ctx, caCertKey, e1)
 	if err != nil {
 		t.Fatal(err)
@@ -96,7 +104,11 @@ func TestValidation(t *testing.T) {
 
 	// Record is not valid if the key is prefixed with a different
 	// CA cert hash
-	unrelatedCaCertKey := "/iprs/" + unrelatedCaCertHash + "/myIprsName"
+	unrelatedCaCertKeyStr := "/iprs/" + unrelatedCaCertHash + "/myIprsName"
+	unrelatedCaCertKey, err := rsp.FromString(unrelatedCaCertKeyStr)
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = certRecordManager.VerifyRecord(ctx, unrelatedCaCertKey, e1)
 	if err == nil {
 		t.Fatal("Failed to return error for validation with different cert")
@@ -108,7 +120,11 @@ func TestValidation(t *testing.T) {
 	// Record is valid if the key is prefixed with the CA cert hash
 	// that issued the signing certificate
 	// /iprs/<ca (issuing) cert hash>/any name
-	certKey := "/iprs/" + caCertHash + "/myDelegatedFriendsIprsName"
+	certKeyStr := "/iprs/" + caCertHash + "/myDelegatedFriendsIprsName"
+	certKey, err := rsp.FromString(certKeyStr)
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = certRecordManager.VerifyRecord(ctx, certKey, e2)
 	if err != nil {
 		t.Fatal(err)
@@ -159,35 +175,6 @@ func TestValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 */
-	// ****** IPRS Path Format Tests ****** //
-
-	// Fails to validate record with empty iprs path
-	err = certRecordManager.VerifyRecord(ctx, "", e1)
-	if err == nil {
-		t.Fatal(err)
-	}
-
-	// Fails to validate record with invalid iprs path prefix
-	err = certRecordManager.VerifyRecord(ctx, "wut/some/path", e1)
-	if err == nil {
-		t.Fatal(err)
-	}
-
-	// Fails to validate record no hash in iprs path
-	err = certRecordManager.VerifyRecord(ctx, "/iprs/", e1)
-	if err == nil {
-		t.Fatal(err)
-	}
-	err = certRecordManager.VerifyRecord(ctx, "/iprs//path", e1)
-	if err == nil {
-		t.Fatal(err)
-	}
-
-	// Fails to validate record with invalid hash in iprs path
-	err = certRecordManager.VerifyRecord(ctx, "/iprs/notavalidhash/path", e1)
-	if err == nil {
-		t.Fatal(err)
-	}
 }
 
 func generateCACertificate(org string) (*x509.Certificate, *rsa.PrivateKey, error) {

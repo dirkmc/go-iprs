@@ -12,6 +12,7 @@ import (
 	dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
 	mockrouting "github.com/ipfs/go-ipfs/routing/mock"
 	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
+	rsp "github.com/dirkmc/go-iprs/path"
 	testutil "gx/ipfs/QmQgLZP9haZheimMHqqAjJh2LhRmNfEoZDfbtkpeMhi9xK/go-testutil"
 )
 
@@ -32,7 +33,10 @@ func setupNewRangeRecordFunc(t *testing.T) (func(uint64, *time.Time, *time.Time)
 	}
 
 	return func(seq uint64, start *time.Time, end *time.Time) *pb.IprsEntry {
-		iprsKey := "/iprs/somehash"
+		iprsKey, err := rsp.FromString("/iprs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5")
+		if err != nil {
+			t.Fatal(err)
+		}
 		rangeRec, err := rangeRecordManager.NewRecord(pk, path.Path("foo"), start, end)
 		if err != nil {
 			t.Fatal(err)
@@ -41,7 +45,7 @@ func setupNewRangeRecordFunc(t *testing.T) (func(uint64, *time.Time, *time.Time)
 		if err != nil {
 			t.Fatal(err)
 		}
-		eBytes, err := r.GetValue(ctx, iprsKey)
+		eBytes, err := r.GetValue(ctx, iprsKey.String())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -189,37 +193,42 @@ func TestRangeValidation(t *testing.T) {
 	expiredA := NewRecord(1, &InOneHour, &InTwoHours)
 	expiredB := NewRecord(1, &InOneHour, EndOfTime)
 
-	err := ValidateRecord("foo", pendingA)
-	if err == nil {
-		t.Fatal("Expected pending error")
-	}
-	err = ValidateRecord("foo2", pendingB)
-	if err == nil {
-		t.Fatal("Expected pending error")
-	}
-
-	err = ValidateRecord("bar", okA)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = ValidateRecord("bar2", okB)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = ValidateRecord("bar3", okC)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = ValidateRecord("bar4", okD)
+	iprsKey, err := rsp.FromString("/iprs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = ValidateRecord("baz", expiredA)
+	err = ValidateRecord(iprsKey, pendingA)
+	if err == nil {
+		t.Fatal("Expected pending error")
+	}
+	err = ValidateRecord(iprsKey, pendingB)
+	if err == nil {
+		t.Fatal("Expected pending error")
+	}
+
+	err = ValidateRecord(iprsKey, okA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ValidateRecord(iprsKey, okB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ValidateRecord(iprsKey, okC)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ValidateRecord(iprsKey, okD)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ValidateRecord(iprsKey, expiredA)
 	if err == nil {
 		t.Fatal("Expected expired error")
 	}
-	err = ValidateRecord("baz2", expiredB)
+	err = ValidateRecord(iprsKey, expiredB)
 	if err == nil {
 		t.Fatal("Expected expired error")
 	}

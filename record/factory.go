@@ -11,6 +11,7 @@ import (
 	path "github.com/ipfs/go-ipfs/path"
 	pb "github.com/dirkmc/go-iprs/pb"
 	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
+	rsp "github.com/dirkmc/go-iprs/path"
 )
 
 type RecordFactory struct {
@@ -42,7 +43,7 @@ func NewRecordFactory(r routing.ValueStore) *RecordFactory {
 }
 
 // Verifies that the given record is correctly signed etc
-func (f *RecordFactory) Verify(ctx context.Context, iprsKey string, entry *pb.IprsEntry) error {
+func (f *RecordFactory) Verify(ctx context.Context, iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
 	manager, ok := f.managers[entry.GetValidityType()]
 	if !ok {
 		return fmt.Errorf("Unrecognized validity type %s", entry.GetValidityType().String())

@@ -10,6 +10,7 @@ import (
 	path "github.com/ipfs/go-ipfs/path"
 	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
 	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
+	rsp "github.com/dirkmc/go-iprs/path"
 	u "github.com/ipfs/go-ipfs-util"
 	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 )
@@ -49,8 +50,8 @@ func (m *RangeRecordManager) NewRecord(pk ci.PrivKey, val path.Path, start *time
 	}, nil
 }
 
-func (v *RangeRecordManager) VerifyRecord(ctx context.Context, k string, entry *pb.IprsEntry) error {
-	return v.CheckPublicKeySignature(ctx, k, entry)
+func (v *RangeRecordManager) VerifyRecord(ctx context.Context, iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
+	return v.CheckPublicKeySignature(ctx, iprsKey, entry)
 }
 
 
@@ -64,7 +65,7 @@ type RangeRecord struct {
 	end *time.Time
 }
 
-func (r *RangeRecord) Publish(ctx context.Context, iprsKey string, seq uint64) error {
+func (r *RangeRecord) Publish(ctx context.Context, iprsKey rsp.IprsPath, seq uint64) error {
 	startFmt := "-∞"
 	if r.start != nil {
 		startFmt = u.FormatRFC3339(*r.start)
@@ -172,7 +173,7 @@ func (v *RangeRecordChecker) timeRange(r *pb.IprsEntry) (*[2]*time.Time, error) 
 }
 
 // ValidateRecord verifies that the given entry is valid.
-func (v *RangeRecordChecker) ValidateRecord(k string, entry *pb.IprsEntry) error {
+func (v *RangeRecordChecker) ValidateRecord(iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
 	t, err := v.timeRange(entry)
 	if err != nil {
 		log.Warning("Failed to parse IPRS Time Range record")

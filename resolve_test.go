@@ -12,6 +12,7 @@ import (
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
 	//	peer "gx/ipfs/QmXYjuNuxVzXKJCfWasQk1RqkhVLDM9jtUKhqc2WPQmFSB/go-libp2p-peer"
+	rsp "github.com/dirkmc/go-iprs/path"
 	rec "github.com/dirkmc/go-iprs/record"
 	u "github.com/ipfs/go-ipfs-util"
 )
@@ -40,7 +41,10 @@ func TestRoutingResolve(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	iprsKey := "/iprs/" + u.Hash(pubkBytes).B58String()
+	iprsKey, err := rsp.FromString("/iprs/" + u.Hash(pubkBytes).B58String())
+	if err != nil {
+		t.Fatal(err)
+	}
 	eolRecord := eolRecordManager.NewRecord(pk, h, ts.Add(time.Hour))
 	publisher.Publish(ctx, iprsKey, eolRecord)
 	/*
@@ -50,7 +54,7 @@ func TestRoutingResolve(t *testing.T) {
 		}
 	*/
 	//	res, err := resolver.Resolve(context.Background(), pid.Pretty())
-	res, err := resolver.Resolve(context.Background(), iprsKey)
+	res, err := resolver.Resolve(context.Background(), iprsKey.String())
 	if err != nil {
 		t.Fatal(err)
 	}

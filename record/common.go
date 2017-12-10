@@ -10,6 +10,7 @@ import (
 	pb "github.com/dirkmc/go-iprs/pb"
 	proto "github.com/gogo/protobuf/proto"
 	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
+	rsp "github.com/dirkmc/go-iprs/path"
 )
 
 const PublishEntryTimeout = time.Second*10
@@ -29,7 +30,7 @@ func RecordDataForSig(r *pb.IprsEntry) []byte {
 		[]byte{})
 }
 
-func PutEntryToRouting(ctx context.Context, r routing.ValueStore, iprsKey string, entry *pb.IprsEntry) error {
+func PutEntryToRouting(ctx context.Context, r routing.ValueStore, iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
 	data, err := proto.Marshal(entry)
 	if err != nil {
 		return err
@@ -39,5 +40,5 @@ func PutEntryToRouting(ctx context.Context, r routing.ValueStore, iprsKey string
 	defer cancel()
 
 	log.Debugf("Storing iprs entry at %s", iprsKey)
-	return r.PutValue(timectx, iprsKey, data)
+	return r.PutValue(timectx, iprsKey.String(), data)
 }

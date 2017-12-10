@@ -2,6 +2,8 @@ package recordstore
 
 import (
 	"errors"
+	"fmt"
+	rsp "github.com/dirkmc/go-iprs/path"
 	pb "github.com/dirkmc/go-iprs/pb"
 	rec "github.com/dirkmc/go-iprs/record"
 	proto "github.com/gogo/protobuf/proto"
@@ -38,7 +40,11 @@ func NewRecordChecker() *RecordChecker {
 			return ErrUnrecognizedValidityType
 		}
 
-		return validator.ValidateRecord(k, entry)
+		p, err := rsp.FromString(k)
+		if err != nil {
+			return fmt.Errorf("Invalid IPRS string passed to ValidateFunc [%s]", k)
+		}
+		return validator.ValidateRecord(p, entry)
 	}
 
 	getEntry := func(i int, length int, val []byte, firstEntry *pb.IprsEntry) *pb.IprsEntry {

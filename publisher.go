@@ -6,16 +6,13 @@ import (
 	"time"
 
 	pb "github.com/dirkmc/go-iprs/pb"
-	//path "github.com/ipfs/go-ipfs/path"
 
+	rsp "github.com/dirkmc/go-iprs/path"
 	r "github.com/dirkmc/go-iprs/record"
 	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
-	//u "gx/ipfs/QmSU6eubNdhXjFBJBSksTp8kv8YRub8mGAPv8tVJHmL2EU/go-ipfs-util"
-	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
-	//peer "gx/ipfs/QmXYjuNuxVzXKJCfWasQk1RqkhVLDM9jtUKhqc2WPQmFSB/go-libp2p-peer"
 	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
-	//ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 	dhtpb "gx/ipfs/QmbxkgUceEcuSZ4ZdBA3x74VUDSSYjHYmmeEqkjxbtZ6Jg/go-libp2p-record/pb"
+	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	base32 "gx/ipfs/QmfVj3x4D6Jkq9SEoi5n2NmoUomLwoeiwnYz2KQa15wRw6/base32"
 )
 
@@ -40,18 +37,10 @@ func NewRoutingPublisher(route routing.ValueStore, ds ds.Datastore) *iprsPublish
 // Publish implements Publisher. Accepts a keypair and a value,
 // and publishes it out to the routing system
 //func (p *iprsPublisher) Publish(ctx context.Context, k ci.PrivKey, value path.Path) error {
-func (p *iprsPublisher) Publish(ctx context.Context, iprsKey string, record r.Record) error {
+func (p *iprsPublisher) Publish(ctx context.Context, iprsKey rsp.IprsPath, record r.Record) error {
 	log.Debugf("Publish %s", iprsKey)
-	/*
-		id, err := peer.IDFromPrivateKey(k)
-		if err != nil {
-			return err
-		}
 
-		_, iprskey := IprsKeysForID(id)
-	*/
 	// get previous records sequence number
-	//seqnum, err := p.getPreviousSeqNo(ctx, iprskey)
 	seqnum, err := p.getPreviousSeqNo(ctx, iprsKey)
 	if err != nil {
 		return err
@@ -59,17 +48,17 @@ func (p *iprsPublisher) Publish(ctx context.Context, iprsKey string, record r.Re
 
 	// increment it
 	seqnum++
+
 	log.Debugf("Putting record with new seq no %d for %s", seqnum, iprsKey)
-	//return PutRecordToRouting(ctx, k, value, seqnum, eol, p.routing, id)
 	return record.Publish(ctx, iprsKey, seqnum)
 }
 
-func (p *iprsPublisher) getPreviousSeqNo(ctx context.Context, iprskey string) (uint64, error) {
-	log.Debugf("getPreviousSeqNo %s", iprskey)
-	prevrec, err := p.ds.Get(NewKeyFromBinary([]byte(iprskey)))
+func (p *iprsPublisher) getPreviousSeqNo(ctx context.Context, iprsKey rsp.IprsPath) (uint64, error) {
+	log.Debugf("getPreviousSeqNo %s", iprsKey)
+	prevrec, err := p.ds.Get(NewKeyFromBinary(iprsKey.Bytes()))
 	if err != nil && err != ds.ErrNotFound {
 		// None found, lets start at zero!
-		log.Debugf("No previous seq no found for %s, start at 0", iprskey)
+		log.Debugf("No previous seq no found for %s, start at 0", iprsKey)
 		return 0, err
 	}
 	var val []byte
@@ -86,15 +75,15 @@ func (p *iprsPublisher) getPreviousSeqNo(ctx context.Context, iprskey string) (u
 
 		val = dhtrec.GetValue()
 	} else {
-		log.Debugf("Checking DHT for seq no for %s", iprskey)
+		log.Debugf("Checking DHT for seq no for %s", iprsKey)
 
 		// try and check the dht for a record
 		ctx, cancel := context.WithTimeout(ctx, time.Second*30)
 		defer cancel()
 
-		rv, err := p.routing.GetValue(ctx, iprskey)
+		rv, err := p.routing.GetValue(ctx, iprsKey.String())
 		if err != nil {
-			log.Debugf("No previous seq no found for %s, start at 0", iprskey)
+			log.Debugf("No previous seq no found for %s, start at 0", iprsKey)
 			// no such record found, start at zero!
 			return 0, nil
 		}
@@ -111,144 +100,7 @@ func (p *iprsPublisher) getPreviousSeqNo(ctx context.Context, iprskey string) (u
 	return e.GetSequence(), nil
 }
 
-/*
-// setting the TTL on published records is an experimental feature.
-// as such, i'm using the context to wire it through to avoid changing too
-// much code along the way.
-func checkCtxTTL(ctx context.Context) (time.Duration, bool) {
-	v := ctx.Value("iprs-publish-ttl")
-	if v == nil {
-		return 0, false
-	}
-
-	d, ok := v.(time.Duration)
-	return d, ok
-}
-
-func PutRecordToRouting(ctx context.Context, k ci.PrivKey, value path.Path, seqnum uint64, eol time.Time, r routing.ValueStore, id peer.ID) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	namekey, iprskey := IprsKeysForID(id)
-
-	entry, err := CreateRoutingEntryData(k, value, seqnum, eol)
-	if err != nil {
-		return err
-	}
-
-	ttl, ok := checkCtxTTL(ctx)
-	if ok {
-		entry.Ttl = proto.Uint64(uint64(ttl.Nanoseconds()))
-	}
-
-	errs := make(chan error, 2) // At most two errors (IPRS, and public key)
-
-	// Attempt to extract the public key from the ID
-	extractedPublicKey := id.ExtractPublicKey()
-
-	go func() {
-		errs <- PublishEntry(ctx, r, iprskey, entry)
-	}()
-
-	// Publish the public key if a public key cannot be extracted from the ID
-	if extractedPublicKey == nil {
-		go func() {
-			errs <- PublishPublicKey(ctx, r, namekey, k.GetPublic())
-		}()
-
-		if err := waitOnErrChan(ctx, errs); err != nil {
-			return err
-		}
-	}
-
-	return waitOnErrChan(ctx, errs)
-}
-
-func waitOnErrChan(ctx context.Context, errs chan error) error {
-	select {
-	case err := <-errs:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-}
-
-func PublishPublicKey(ctx context.Context, r routing.ValueStore, k string, pubk ci.PubKey) error {
-	log.Debugf("Storing pubkey at: %s", k)
-	pkbytes, err := pubk.Bytes()
-	if err != nil {
-		return err
-	}
-
-	// Store associated public key
-	timectx, cancel := context.WithTimeout(ctx, PublishPutValTimeout)
-	defer cancel()
-	return r.PutValue(timectx, k, pkbytes)
-}
-
-func PublishEntry(ctx context.Context, r routing.ValueStore, iprskey string, rec *pb.IprsEntry) error {
-	timectx, cancel := context.WithTimeout(ctx, PublishPutValTimeout)
-	defer cancel()
-
-	data, err := proto.Marshal(rec)
-	if err != nil {
-		return err
-	}
-
-	log.Debugf("Storing iprs entry at: %s", iprskey)
-	// Store iprs entry at "/iprs/"+b58(h(pubkey))
-	return r.PutValue(timectx, iprskey, data)
-}
-
-func CreateRoutingEntryData(pk ci.PrivKey, val path.Path, seq uint64, eol time.Time) (*pb.IprsEntry, error) {
-	entry := new(pb.IprsEntry)
-
-	entry.Value = []byte(val)
-	typ := pb.IprsEntry_EOL
-	entry.ValidityType = &typ
-	entry.Sequence = proto.Uint64(seq)
-	entry.Validity = []byte(u.FormatRFC3339(eol))
-
-	sig, err := pk.Sign(rec.RecordDataForSig(entry))
-	if err != nil {
-		return nil, err
-	}
-	entry.Signature = sig
-	return entry, nil
-}
-
-// InitializeKeyspace sets the iprs record for the given key to
-// point to an empty directory.
-// TODO: this doesnt feel like it belongs here
-func InitializeKeyspace(ctx context.Context, ds dag.DAGService, pub Publisher, pins pin.Pinner, key ci.PrivKey) error {
-	emptyDir := ft.EmptyDirNode()
-	nodek, err := ds.Add(emptyDir)
-	if err != nil {
-		return err
-	}
-
-	// pin recursively because this might already be pinned
-	// and doing a direct pin would throw an error in that case
-	err = pins.Pin(ctx, emptyDir, true)
-	if err != nil {
-		return err
-	}
-
-	err = pins.Flush()
-	if err != nil {
-		return err
-	}
-
-	return pub.Publish(ctx, key, path.FromCid(nodek))
-}
-
-func IprsKeysForID(id peer.ID) (name, iprs string) {
-	namekey := "/pk/" + string(id)
-	iprskey := "/iprs/" + string(id)
-
-	return namekey, iprskey
-}
-*/
+// TODO: Figure out gx resolution so we can import this instead of copying it
 // Copied from https://github.com/ipfs/go-ipfs/blob/master/thirdparty/ds-help/key.go
 func NewKeyFromBinary(rawKey []byte) ds.Key {
 	buf := make([]byte, 1+base32.RawStdEncoding.EncodedLen(len(rawKey)))

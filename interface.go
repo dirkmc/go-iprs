@@ -32,6 +32,7 @@ package recordstore
 import (
 	context "context"
 	"errors"
+	rsp "github.com/dirkmc/go-iprs/path"
 	r "github.com/dirkmc/go-iprs/record"
 	path "github.com/ipfs/go-ipfs/path"
 )
@@ -101,7 +102,7 @@ type Resolver interface {
 // Publisher is an object capable of publishing a Record
 type Publisher interface {
 	// Publish establishes a name-value mapping.
-	Publish(ctx context.Context, iprsKey string, record r.Record) error
+	Publish(ctx context.Context, iprsKey rsp.IprsPath, record r.Record) error
 	/*
 		// Publish establishes a name-value mapping.
 		// TODO make this not PrivKey specific.

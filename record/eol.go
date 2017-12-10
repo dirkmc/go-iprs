@@ -9,6 +9,7 @@ import (
 	path "github.com/ipfs/go-ipfs/path"
 	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
 	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
+	rsp "github.com/dirkmc/go-iprs/path"
 	u "github.com/ipfs/go-ipfs-util"
 	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 )
@@ -36,8 +37,8 @@ func (m *EolRecordManager) NewRecord(pk ci.PrivKey, val path.Path, eol time.Time
 	}
 }
 
-func (v *EolRecordManager) VerifyRecord(ctx context.Context, k string, entry *pb.IprsEntry) error {
-	return v.CheckPublicKeySignature(ctx, k, entry)
+func (v *EolRecordManager) VerifyRecord(ctx context.Context, iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
+	return v.CheckPublicKeySignature(ctx, iprsKey, entry)
 }
 
 
@@ -50,7 +51,7 @@ type EolRecord struct {
 	eol time.Time
 }
 
-func (r *EolRecord) Publish(ctx context.Context, iprsKey string, seq uint64) error {
+func (r *EolRecord) Publish(ctx context.Context, iprsKey rsp.IprsPath, seq uint64) error {
 	entry := new(pb.IprsEntry)
 
 	entry.Value = []byte(r.val)
@@ -76,7 +77,7 @@ func (v *EolRecordChecker) SelectRecord(recs []*pb.IprsEntry, vals [][]byte) (in
 	})
 }
 
-func (v *EolRecordChecker) ValidateRecord(k string, entry *pb.IprsEntry) error {
+func (v *EolRecordChecker) ValidateRecord(iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
 	return EolValidityCheck(string(entry.GetValidity()))
 }
 
