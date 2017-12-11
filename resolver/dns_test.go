@@ -90,6 +90,9 @@ func newMockDNS() *mockDNS {
 			"dns3.example.com": []string{
 				"dnslink=/iprs/ipfs.example.com",
 			},
+			"dns4.example.com": []string{
+				"dnslink=/iprs/dns2.example.com",
+			},
 			"multi.example.com": []string{
 				"some stuff",
 				"dnslink=/ipns/dns1.example.com",
@@ -157,6 +160,7 @@ func TestDNSResolution(t *testing.T) {
 	testResolution(t, r, "dns2.example.com", 1, "/ipns/dns1.example.com", ErrResolveRecursion)
 	testResolution(t, r, "dns2.example.com", 2, "/ipns/ipfs.example.com", ErrResolveRecursion)
 	testResolution(t, r, "dns3.example.com", DefaultDepthLimit, "/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD", nil)
+	testResolution(t, r, "dns4.example.com", DefaultDepthLimit, "/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD", nil)
 	testResolution(t, r, "multi.example.com", DefaultDepthLimit, "/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD", nil)
 	testResolution(t, r, "multi.example.com", 1, "/ipns/dns1.example.com", ErrResolveRecursion)
 	testResolution(t, r, "multi.example.com", 2, "/ipns/ipfs.example.com", ErrResolveRecursion)
