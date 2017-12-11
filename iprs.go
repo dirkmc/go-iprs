@@ -33,7 +33,6 @@ type mpns struct {
 	publishers map[string]Publisher
 }
 
-// NewNameSystem will construct the IPFS naming system based on Routing
 func NewNameSystem(r routing.ValueStore, ds ds.Datastore, cachesize int) NameSystem {
 	factory := rec.NewRecordFactory(r)
 	return &mpns{
@@ -69,7 +68,7 @@ func (ns *mpns) ResolveN(ctx context.Context, name string, depth int) (path.Path
 }
 
 // ResolveOnce implements Lookup.
-func (ns *mpns) ResolveOnce(ctx context.Context, name string) (path.Path, error) {
+func (ns *mpns) ResolveOnce(ctx context.Context, name string) (string, error) {
 	if !strings.HasPrefix(name, "/iprs/") {
 		name = "/iprs/" + name
 	}
@@ -85,7 +84,7 @@ func (ns *mpns) ResolveOnce(ctx context.Context, name string) (path.Path, error)
 		p, err := resolver.ResolveOnce(ctx, segments[2])
 		if err == nil {
 			if len(segments) > 3 {
-				return path.FromSegments("", strings.TrimRight(p.String(), "/"), segments[3])
+				return strings.TrimRight(p, "/") + "/" + segments[3], nil
 			} else {
 				return p, err
 			}

@@ -23,7 +23,7 @@ type DHTResolver struct {
 	verifier *rec.RecordFactory
 }
 
-func (r *DHTResolver) cacheGet(name string) (path.Path, bool) {
+func (r *DHTResolver) cacheGet(name string) (string, bool) {
 	if r.cache == nil {
 		return "", false
 	}
@@ -48,7 +48,7 @@ func (r *DHTResolver) cacheGet(name string) (path.Path, bool) {
 	return "", false
 }
 
-func (r *DHTResolver) cacheSet(name string, val path.Path, rec *pb.IprsEntry) {
+func (r *DHTResolver) cacheSet(name string, val string, rec *pb.IprsEntry) {
 	if r.cache == nil {
 		return
 	}
@@ -77,7 +77,7 @@ func (r *DHTResolver) cacheSet(name string, val path.Path, rec *pb.IprsEntry) {
 }
 
 type cacheEntry struct {
-	val path.Path
+	val string
 	eol time.Time
 }
 
@@ -115,7 +115,7 @@ func (r *DHTResolver) ResolveN(ctx context.Context, name string, depth int) (pat
 
 // ResolveOnce implements Lookup. Uses the IPFS routing system to
 // resolve SFS-like names.
-func (r *DHTResolver) ResolveOnce(ctx context.Context, name string) (path.Path, error) {
+func (r *DHTResolver) ResolveOnce(ctx context.Context, name string) (string, error) {
 	log.Debugf("RoutingResolve: '%s'", name)
 	cached, ok := r.cacheGet(name)
 	if ok {
@@ -156,19 +156,22 @@ func (r *DHTResolver) ResolveOnce(ctx context.Context, name string) (path.Path, 
 	valh, err := mh.Cast(entry.GetValue())
 	if err != nil {
 		// Not a multihash, probably a new record
-		p, err := path.ParsePath(string(entry.GetValue()))
+		val := string(entry.GetValue())
+
+		// Check it can be parsed as a path
+		_, err := path.ParsePath(val)
 		if err != nil {
 			return "", err
 		}
 
-		r.cacheSet(name, p, entry)
-		return p, nil
+		r.cacheSet(name, val, entry)
+		return val, nil
 	} else {
 		// Its an old style multihash record
 		log.Warning("Detected old style multihash record")
 		p := path.FromCid(cid.NewCidV0(valh))
-		r.cacheSet(name, p, entry)
-		return p, nil
+		r.cacheSet(name, p.String(), entry)
+		return p.String(), nil
 	}
 }
 

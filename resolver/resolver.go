@@ -1,9 +1,10 @@
 package iprs_resolver
 
 import (
-	"strings"
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 	path "github.com/ipfs/go-ipfs/path"
 	logging "github.com/ipfs/go-log"
@@ -32,7 +33,7 @@ var ErrResolveRecursion = errors.New("Could not resolve name (recursion limit ex
 
 type Lookup interface {
 	// ResolveOnce looks up a name once (without recursion).
-	ResolveOnce(ctx context.Context, name string) (value path.Path, err error)
+	ResolveOnce(ctx context.Context, name string) (value string, err error)
 }
 
 // Resolve is a helper for implementing Resolver.ResolveN using resolveOnce.
@@ -44,16 +45,20 @@ func Resolve(ctx context.Context, r Lookup, name string, depth int, prefixes ...
 			log.Warningf("Could not resolve %s", name)
 			return "", err
 		}
-		log.Debugf("Resolved %s to %s", name, p.String())
+		log.Debugf("Resolved %s to %s", name, p)
 
 		// If we've bottomed out with an IPFS path we can return
-		if strings.HasPrefix(p.String(), "/ipfs/") {
-			return p, nil
+		if strings.HasPrefix(p, "/ipfs/") {
+			return parsePath(p)
 		}
 
 		// If we've recursed up to the limit, bail out with an error
 		if depth == 1 {
-			return p, ErrResolveRecursion
+			pth, err := parsePath(p)
+			if err != nil {
+				return "", ErrResolveRecursion
+			}
+			return pth, ErrResolveRecursion
 		}
 
 		// If the path has a recognized prefix, remove it
@@ -61,16 +66,16 @@ func Resolve(ctx context.Context, r Lookup, name string, depth int, prefixes ...
 		// eg /ipns/www.example.com => www.example.com
 		matched := false
 		for _, prefix := range prefixes {
-			if strings.HasPrefix(p.String(), prefix) {
+			if strings.HasPrefix(p, prefix) {
 				matched = true
-				name = strings.TrimPrefix(p.String(), prefix)
+				name = strings.TrimPrefix(p, prefix)
 				break
 			}
 		}
 
 		// There were no recognzed prefixes, so just return the path itself
 		if !matched {
-			return p, nil
+			return parsePath(p)
 		}
 
 		// Recurse
@@ -78,4 +83,13 @@ func Resolve(ctx context.Context, r Lookup, name string, depth int, prefixes ...
 			depth--
 		}
 	}
+}
+
+func parsePath(val string) (path.Path, error) {
+	p, err := path.ParsePath(val)
+	if err != nil {
+		return "", fmt.Errorf("Could not parse path from [%s]: %s", val, err)
+	}
+
+	return p, nil
 }

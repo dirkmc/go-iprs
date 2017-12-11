@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	// gologging "github.com/whyrusleeping/go-logging"
+	// logging "github.com/ipfs/go-log"
 )
 
 type mockDNS struct {
@@ -18,14 +20,16 @@ func (m *mockDNS) lookupTXT(name string) (txt []string, err error) {
 	return txt, nil
 }
 
-func TestDnsEntryParsing(t *testing.T) {
+func TestDNSEntryParsing(t *testing.T) {
 
 	goodEntries := []string{
 		"QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD",
 		"dnslink=/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD",
 		"dnslink=/ipns/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD",
+		"dnslink=/iprs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD",
 		"dnslink=/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/foo",
 		"dnslink=/ipns/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/bar",
+		"dnslink=/iprs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/bar",
 		"dnslink=/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/foo/bar/baz",
 		"dnslink=/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/foo/bar/baz/",
 		"dnslink=/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD",
@@ -34,9 +38,17 @@ func TestDnsEntryParsing(t *testing.T) {
 	badEntries := []string{
 		"QmYhE8xgFCjGcz6PHgnvJz5NOTCORRECT",
 		"quux=/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD",
-		"dnslink=",
 		"dnslink=/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/foo",
 		"dnslink=ipns/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/bar",
+		"dnslink=iprs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/bar",
+		"dnslink=/iprs/",
+		"dnslink=//",
+		"dnslink=/",
+		"dnslink=",
+		"dnslink=/iprs/notADomainOrHash",
+		"dnslink=/iprs/notADomainOrHash/a",
+		"dnslink=/iprs/QmYhE8xgFCjGcz6PHgnvJz5NOTCORRECT",
+		"dnslink=/iprs/QmYhE8xgFCjGcz6PHgnvJz5NOTCORRECT/a",
 	}
 
 	for _, e := range goodEntries {
@@ -52,7 +64,7 @@ func TestDnsEntryParsing(t *testing.T) {
 		_, err := parseEntry(e)
 		if err == nil {
 			t.Log("expected entry parse to fail!")
-			t.Fatal(err)
+			t.Fatal(e)
 		}
 	}
 }
@@ -74,6 +86,9 @@ func newMockDNS() *mockDNS {
 			},
 			"dns2.example.com": []string{
 				"dnslink=/ipns/dns1.example.com",
+			},
+			"dns3.example.com": []string{
+				"dnslink=/iprs/ipfs.example.com",
 			},
 			"multi.example.com": []string{
 				"some stuff",
@@ -104,6 +119,9 @@ func newMockDNS() *mockDNS {
 			"withrecsegment.example.com": []string{
 				"dnslink=/ipns/withsegment.example.com/subsub",
 			},
+			"withrecsegmentiprs.example.com": []string{
+				"dnslink=/iprs/withsegment.example.com/subsub",
+			},
 			"withtrailing.example.com": []string{
 				"dnslink=/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/",
 			},
@@ -127,6 +145,7 @@ func newMockDNS() *mockDNS {
 }
 
 func TestDNSResolution(t *testing.T) {
+//	logging.SetAllLoggers(gologging.DEBUG)
 	mock := newMockDNS()
 	r := &DNSResolver{lookupTXT: mock.lookupTXT}
 	testResolution(t, r, "multihash.example.com", DefaultDepthLimit, "/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD", nil)
@@ -137,6 +156,7 @@ func TestDNSResolution(t *testing.T) {
 	testResolution(t, r, "dns2.example.com", DefaultDepthLimit, "/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD", nil)
 	testResolution(t, r, "dns2.example.com", 1, "/ipns/dns1.example.com", ErrResolveRecursion)
 	testResolution(t, r, "dns2.example.com", 2, "/ipns/ipfs.example.com", ErrResolveRecursion)
+	testResolution(t, r, "dns3.example.com", DefaultDepthLimit, "/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD", nil)
 	testResolution(t, r, "multi.example.com", DefaultDepthLimit, "/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD", nil)
 	testResolution(t, r, "multi.example.com", 1, "/ipns/dns1.example.com", ErrResolveRecursion)
 	testResolution(t, r, "multi.example.com", 2, "/ipns/ipfs.example.com", ErrResolveRecursion)
@@ -152,6 +172,7 @@ func TestDNSResolution(t *testing.T) {
 	testResolution(t, r, "bad.example.com", DefaultDepthLimit, "", ErrResolveFailed)
 	testResolution(t, r, "withsegment.example.com", DefaultDepthLimit, "/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/segment", nil)
 	testResolution(t, r, "withrecsegment.example.com", DefaultDepthLimit, "/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/segment/subsub", nil)
+	testResolution(t, r, "withrecsegmentiprs.example.com", DefaultDepthLimit, "/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/segment/subsub", nil)
 	testResolution(t, r, "withsegment.example.com/test1", DefaultDepthLimit, "/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/segment/test1", nil)
 	testResolution(t, r, "withrecsegment.example.com/test2", DefaultDepthLimit, "/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/segment/subsub/test2", nil)
 	testResolution(t, r, "withrecsegment.example.com/test3/", DefaultDepthLimit, "/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/segment/subsub/test3/", nil)
