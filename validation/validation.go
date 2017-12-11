@@ -1,4 +1,4 @@
-package recordstore_validation
+package iprs_validation
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 	logging "github.com/ipfs/go-log"
 )
 
-var log = logging.Logger("recordstore.validation")
+var log = logging.Logger("iprs.validation")
 
 // ErrUnrecognizedValidityType is returned when an IprsEntry has an
 // unknown record type.

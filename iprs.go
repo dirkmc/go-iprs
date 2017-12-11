@@ -1,12 +1,12 @@
-package recordstore
+package iprs
 
 import (
 	"context"
 	"strings"
 	"time"
 
-	psh "github.com/dirkmc/go-iprs/publisher"
 	rsp "github.com/dirkmc/go-iprs/path"
+	psh "github.com/dirkmc/go-iprs/publisher"
 	r "github.com/dirkmc/go-iprs/record"
 	rec "github.com/dirkmc/go-iprs/record"
 	rsv "github.com/dirkmc/go-iprs/resolver"
@@ -16,7 +16,7 @@ import (
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 )
 
-var log = logging.Logger("recordstore")
+var log = logging.Logger("iprs")
 
 // mpns (a multi-protocol NameSystem) implements generic IPFS naming.
 //

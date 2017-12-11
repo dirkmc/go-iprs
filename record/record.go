@@ -1,4 +1,4 @@
-package recordstore_record
+package iprs_record
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ import (
 
 const PublishPutValTimeout = time.Second*10
 
-var log = logging.Logger("recordstore.record")
+var log = logging.Logger("iprs.record")
 
 type RecordValidity interface {
 	ValidityType() *pb.IprsEntry_ValidityType

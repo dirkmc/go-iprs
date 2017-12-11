@@ -1,4 +1,4 @@
-package recordstore_publisher
+package iprs_publisher
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 	logging "github.com/ipfs/go-log"
 )
 
-var log = logging.Logger("recordstore_publisher")
+var log = logging.Logger("iprs_publisher")
 
 // ErrPublishFailed signals an error when attempting to publish.
 var ErrPublishFailed = errors.New("Could not publish name.")

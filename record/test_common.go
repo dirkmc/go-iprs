@@ -1,4 +1,4 @@
-package recordstore_record
+package iprs_record
 
 import (
 	"fmt"

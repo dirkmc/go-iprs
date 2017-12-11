@@ -2,7 +2,7 @@
 // source: iprs.proto
 
 /*
-Package recordstore_pb is a generated protocol buffer package.
+Package iprs_pb is a generated protocol buffer package.
 
 protoc --go_out=. *.proto
 
@@ -12,7 +12,7 @@ It is generated from these files:
 It has these top-level messages:
 	IprsEntry
 */
-package recordstore_pb
+package iprs_pb
 
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
@@ -106,9 +106,9 @@ func (IprsEntry_VerificationType) EnumDescriptor() ([]byte, []int) {
 type IprsEntry struct {
 	Value            []byte                      `protobuf:"bytes,1,req,name=value" json:"value,omitempty"`
 	Signature        []byte                      `protobuf:"bytes,2,req,name=signature" json:"signature,omitempty"`
-	VerificationType *IprsEntry_VerificationType `protobuf:"varint,3,req,name=verificationType,enum=recordstore.pb.IprsEntry_VerificationType" json:"verificationType,omitempty"`
+	VerificationType *IprsEntry_VerificationType `protobuf:"varint,3,req,name=verificationType,enum=iprs.pb.IprsEntry_VerificationType" json:"verificationType,omitempty"`
 	Verification     []byte                      `protobuf:"bytes,4,req,name=verification" json:"verification,omitempty"`
-	ValidityType     *IprsEntry_ValidityType     `protobuf:"varint,5,opt,name=validityType,enum=recordstore.pb.IprsEntry_ValidityType" json:"validityType,omitempty"`
+	ValidityType     *IprsEntry_ValidityType     `protobuf:"varint,5,opt,name=validityType,enum=iprs.pb.IprsEntry_ValidityType" json:"validityType,omitempty"`
 	Validity         []byte                      `protobuf:"bytes,6,opt,name=validity" json:"validity,omitempty"`
 	Sequence         *uint64                     `protobuf:"varint,7,opt,name=sequence" json:"sequence,omitempty"`
 	XXX_unrecognized []byte                      `json:"-"`
@@ -169,9 +169,9 @@ func (m *IprsEntry) GetSequence() uint64 {
 }
 
 func init() {
-	proto.RegisterType((*IprsEntry)(nil), "recordstore.pb.IprsEntry")
-	proto.RegisterEnum("recordstore.pb.IprsEntry_ValidityType", IprsEntry_ValidityType_name, IprsEntry_ValidityType_value)
-	proto.RegisterEnum("recordstore.pb.IprsEntry_VerificationType", IprsEntry_VerificationType_name, IprsEntry_VerificationType_value)
+	proto.RegisterType((*IprsEntry)(nil), "iprs.pb.IprsEntry")
+	proto.RegisterEnum("iprs.pb.IprsEntry_ValidityType", IprsEntry_ValidityType_name, IprsEntry_ValidityType_value)
+	proto.RegisterEnum("iprs.pb.IprsEntry_VerificationType", IprsEntry_VerificationType_name, IprsEntry_VerificationType_value)
 }
 
 func init() { proto.RegisterFile("iprs.proto", fileDescriptor0) }

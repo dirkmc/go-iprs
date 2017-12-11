@@ -1,4 +1,4 @@
-package recordstore_resolver
+package iprs_resolver
 
 import (
 	"context"

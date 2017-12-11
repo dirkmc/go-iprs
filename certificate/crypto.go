@@ -1,4 +1,4 @@
-package recordstore_cert
+package iprs_cert
 
 import (
 	"bytes"

@@ -1,4 +1,4 @@
-package recordstore_util
+package iprs_util
 
 import (
 	"context"

@@ -1,4 +1,4 @@
-package recordstore_cert
+package iprs_cert
 
 import (
 	"context"
@@ -16,7 +16,7 @@ const certPrefixLen = len(certPrefix)
 const CertFetchTimeout = time.Second*10
 const CertPutTimeout = time.Second*10
 
-var log = logging.Logger("recordstore.cert")
+var log = logging.Logger("iprs.cert")
 
 type CertificateManager struct {
 	routing routing.ValueStore

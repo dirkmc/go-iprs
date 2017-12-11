@@ -1,4 +1,4 @@
-package recordstore_resolver
+package iprs_resolver
 
 import (
 	"strings"
@@ -9,7 +9,7 @@ import (
 	logging "github.com/ipfs/go-log"
 )
 
-var log = logging.Logger("recordstore.resolver")
+var log = logging.Logger("iprs.resolver")
 
 const DefaultResolverCacheTTL = time.Minute
 

@@ -27,7 +27,7 @@ For command-line bindings to this functionality, see:
   ipfs dns
   ipfs resolve
 */
-package recordstore
+package iprs
 
 import (
 	context "context"

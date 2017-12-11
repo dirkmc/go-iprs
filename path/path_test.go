@@ -1,4 +1,4 @@
-package recordstore_path
+package iprs_path
 
 import (
 	"testing"

@@ -1,5 +1,5 @@
 // protoc --go_out=. *.proto
-package recordstore.pb;
+package iprs.pb;
 
 message IprsEntry {
 	enum ValidityType {
