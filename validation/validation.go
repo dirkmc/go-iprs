@@ -1,4 +1,4 @@
-package recordstore
+package recordstore_validation
 
 import (
 	"errors"
@@ -8,15 +8,18 @@ import (
 	rec "github.com/dirkmc/go-iprs/record"
 	proto "github.com/gogo/protobuf/proto"
 	record "github.com/libp2p/go-libp2p-record"
+	logging "github.com/ipfs/go-log"
 )
+
+var log = logging.Logger("recordstore.validation")
 
 // ErrUnrecognizedValidityType is returned when an IprsEntry has an
 // unknown record type.
 var ErrUnrecognizedValidityType = errors.New("unrecognized validity type")
 
 type recordChecker struct {
-	validChecker *record.ValidChecker
-	selector     record.SelectorFunc
+	ValidChecker *record.ValidChecker
+	Selector     record.SelectorFunc
 }
 
 func newRecordChecker() *recordChecker {
@@ -105,11 +108,11 @@ func newRecordChecker() *recordChecker {
 	}
 
 	return &recordChecker{
-		validChecker: &record.ValidChecker{
+		ValidChecker: &record.ValidChecker{
 			Func: validateRecord,
 			Sign: true,
 		},
-		selector: selectRecord,
+		Selector: selectRecord,
 	}
 }
 

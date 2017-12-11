@@ -1,12 +1,12 @@
-package recordstore
+package recordstore_publisher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	pb "github.com/dirkmc/go-iprs/pb"
-
 	rsp "github.com/dirkmc/go-iprs/path"
 	r "github.com/dirkmc/go-iprs/record"
 	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
@@ -14,7 +14,13 @@ import (
 	dhtpb "gx/ipfs/QmbxkgUceEcuSZ4ZdBA3x74VUDSSYjHYmmeEqkjxbtZ6Jg/go-libp2p-record/pb"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	base32 "gx/ipfs/QmfVj3x4D6Jkq9SEoi5n2NmoUomLwoeiwnYz2KQa15wRw6/base32"
+	logging "github.com/ipfs/go-log"
 )
+
+var log = logging.Logger("recordstore_publisher")
+
+// ErrPublishFailed signals an error when attempting to publish.
+var ErrPublishFailed = errors.New("Could not publish name.")
 
 const PublishPutValTimeout = time.Minute
 const DefaultRecordTTL = 24 * time.Hour
@@ -26,8 +32,8 @@ type iprsPublisher struct {
 	ds      ds.Datastore
 }
 
-// NewRoutingPublisher constructs a publisher for the IPFS Routing name system.
-func NewRoutingPublisher(route routing.ValueStore, ds ds.Datastore) *iprsPublisher {
+// NewDHTPublisher constructs a publisher for the IPFS Routing name system.
+func NewDHTPublisher(route routing.ValueStore, ds ds.Datastore) *iprsPublisher {
 	if ds == nil {
 		panic("nil datastore")
 	}

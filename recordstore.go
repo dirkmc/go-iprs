@@ -5,14 +5,14 @@ import (
 	"strings"
 	"time"
 
+	psh "github.com/dirkmc/go-iprs/publisher"
 	rsp "github.com/dirkmc/go-iprs/path"
 	r "github.com/dirkmc/go-iprs/record"
 	rec "github.com/dirkmc/go-iprs/record"
+	rsv "github.com/dirkmc/go-iprs/resolver"
 	path "github.com/ipfs/go-ipfs/path"
 	logging "github.com/ipfs/go-log"
 	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
-	peer "gx/ipfs/QmXYjuNuxVzXKJCfWasQk1RqkhVLDM9jtUKhqc2WPQmFSB/go-libp2p-peer"
-	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 )
 
@@ -29,7 +29,7 @@ var log = logging.Logger("recordstore")
 //
 
 type mpns struct {
-	resolvers  map[string]resolver
+	resolvers  map[string]rsv.Lookup
 	publishers map[string]Publisher
 }
 
@@ -37,13 +37,13 @@ type mpns struct {
 func NewNameSystem(r routing.ValueStore, ds ds.Datastore, cachesize int) NameSystem {
 	factory := rec.NewRecordFactory(r)
 	return &mpns{
-		resolvers: map[string]resolver{
-			//"dns":      newDNSResolver(),
+		resolvers: map[string]rsv.Lookup{
+			"dns": rsv.NewDNSResolver(),
 			//"proquint": new(ProquintResolver),
-			"dht": NewRoutingResolver(r, factory, cachesize),
+			"dht": rsv.NewDHTResolver(r, factory, cachesize),
 		},
 		publishers: map[string]Publisher{
-			"/iprs/": NewRoutingPublisher(r, ds),
+			"/iprs/": psh.NewDHTPublisher(r, ds),
 		},
 	}
 }
@@ -52,7 +52,7 @@ const DefaultResolverCacheTTL = time.Minute
 
 // Resolve implements Resolver.
 func (ns *mpns) Resolve(ctx context.Context, name string) (path.Path, error) {
-	return ns.ResolveN(ctx, name, DefaultDepthLimit)
+	return ns.ResolveN(ctx, name, rsv.DefaultDepthLimit)
 }
 
 // ResolveN implements Resolver.
@@ -65,11 +65,11 @@ func (ns *mpns) ResolveN(ctx context.Context, name string, depth int) (path.Path
 		return path.ParsePath("/ipfs/" + name)
 	}
 
-	return resolve(ctx, ns, name, depth, "/iprs/")
+	return rsv.Resolve(ctx, ns, name, depth, "/iprs/")
 }
 
-// resolveOnce implements resolver.
-func (ns *mpns) resolveOnce(ctx context.Context, name string) (path.Path, error) {
+// ResolveOnce implements Lookup.
+func (ns *mpns) ResolveOnce(ctx context.Context, name string) (path.Path, error) {
 	if !strings.HasPrefix(name, "/iprs/") {
 		name = "/iprs/" + name
 	}
@@ -77,12 +77,12 @@ func (ns *mpns) resolveOnce(ctx context.Context, name string) (path.Path, error)
 	segments := strings.SplitN(name, "/", 4)
 	if len(segments) < 3 || segments[0] != "" || !rsp.IsValid(name) {
 		log.Warningf("Invalid name syntax for %s", name)
-		return "", ErrResolveFailed
+		return "", rsv.ErrResolveFailed
 	}
 
 	for protocol, resolver := range ns.resolvers {
 		log.Debugf("Attempting to resolve %s with %s", segments[2], protocol)
-		p, err := resolver.resolveOnce(ctx, segments[2])
+		p, err := resolver.ResolveOnce(ctx, segments[2])
 		if err == nil {
 			if len(segments) > 3 {
 				return path.FromSegments("", strings.TrimRight(p.String(), "/"), segments[3])
@@ -92,7 +92,7 @@ func (ns *mpns) resolveOnce(ctx context.Context, name string) (path.Path, error)
 		}
 	}
 	log.Warningf("No resolver found for %s", name)
-	return "", ErrResolveFailed
+	return "", rsv.ErrResolveFailed
 }
 
 // Publish implements Publisher
@@ -116,7 +116,7 @@ func (ns *mpns) PublishWithEOL(ctx context.Context, name ci.PrivKey, value path.
 	ns.addToDHTCache(name, value, eol)
 	return nil
 }
-*/
+
 func (ns *mpns) addToDHTCache(key ci.PrivKey, value path.Path, eol time.Time) {
 	rr, ok := ns.resolvers["dht"].(*routingResolver)
 	if !ok {
@@ -149,3 +149,4 @@ func (ns *mpns) addToDHTCache(key ci.PrivKey, value path.Path, eol time.Time) {
 		eol: eol,
 	})
 }
+*/

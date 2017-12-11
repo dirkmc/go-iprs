@@ -1,4 +1,4 @@
-package recordstore
+package recordstore_resolver
 
 import (
 	"context"
@@ -16,14 +16,14 @@ import (
 	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
 )
 
-// routingResolver implements NSResolver for the main IPFS SFS-like naming
-type routingResolver struct {
+// DHTResolver implements NSResolver for the main IPFS SFS-like naming
+type DHTResolver struct {
 	routing  routing.ValueStore
 	cache    *lru.Cache
 	verifier *rec.RecordFactory
 }
 
-func (r *routingResolver) cacheGet(name string) (path.Path, bool) {
+func (r *DHTResolver) cacheGet(name string) (path.Path, bool) {
 	if r.cache == nil {
 		return "", false
 	}
@@ -48,7 +48,7 @@ func (r *routingResolver) cacheGet(name string) (path.Path, bool) {
 	return "", false
 }
 
-func (r *routingResolver) cacheSet(name string, val path.Path, rec *pb.IprsEntry) {
+func (r *DHTResolver) cacheSet(name string, val path.Path, rec *pb.IprsEntry) {
 	if r.cache == nil {
 		return
 	}
@@ -85,7 +85,7 @@ type cacheEntry struct {
 // to implement SFS-like naming on top.
 // cachesize is the limit of the number of entries in the lru cache. Setting it
 // to '0' will disable caching.
-func NewRoutingResolver(route routing.ValueStore, verifier *rec.RecordFactory, cachesize int) *routingResolver {
+func NewDHTResolver(route routing.ValueStore, verifier *rec.RecordFactory, cachesize int) *DHTResolver {
 	if route == nil {
 		panic("attempt to create resolver with nil routing system")
 	}
@@ -95,26 +95,27 @@ func NewRoutingResolver(route routing.ValueStore, verifier *rec.RecordFactory, c
 		cache, _ = lru.New(cachesize)
 	}
 
-	return &routingResolver{
+	return &DHTResolver{
 		routing:  route,
 		cache:    cache,
 		verifier: verifier,
 	}
 }
-
+ 
 // Resolve implements Resolver.
-func (r *routingResolver) Resolve(ctx context.Context, name string) (path.Path, error) {
+func (r *DHTResolver) Resolve(ctx context.Context, name string) (path.Path, error) {
 	return r.ResolveN(ctx, name, DefaultDepthLimit)
 }
 
 // ResolveN implements Resolver.
-func (r *routingResolver) ResolveN(ctx context.Context, name string, depth int) (path.Path, error) {
-	return resolve(ctx, r, name, depth, "/iprs/")
+func (r *DHTResolver) ResolveN(ctx context.Context, name string, depth int) (path.Path, error) {
+	// TODO: should prefixes be ["/iprs/", "/ipns/"]?
+	return Resolve(ctx, r, name, depth, "/iprs/")
 }
 
-// resolveOnce implements resolver. Uses the IPFS routing system to
+// ResolveOnce implements Lookup. Uses the IPFS routing system to
 // resolve SFS-like names.
-func (r *routingResolver) resolveOnce(ctx context.Context, name string) (path.Path, error) {
+func (r *DHTResolver) ResolveOnce(ctx context.Context, name string) (path.Path, error) {
 	log.Debugf("RoutingResolve: '%s'", name)
 	cached, ok := r.cacheGet(name)
 	if ok {

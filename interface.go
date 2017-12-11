@@ -31,32 +31,10 @@ package recordstore
 
 import (
 	context "context"
-	"errors"
 	rsp "github.com/dirkmc/go-iprs/path"
 	r "github.com/dirkmc/go-iprs/record"
 	path "github.com/ipfs/go-ipfs/path"
 )
-
-const (
-	// DefaultDepthLimit is the default depth limit used by Resolve.
-	DefaultDepthLimit = 32
-
-	// UnlimitedDepth allows infinite recursion in ResolveN.  You
-	// probably don't want to use this, but it's here if you absolutely
-	// trust resolution to eventually complete and can't put an upper
-	// limit on how many steps it will take.
-	UnlimitedDepth = 0
-)
-
-// ErrResolveFailed signals an error when attempting to resolve.
-var ErrResolveFailed = errors.New("Could not resolve name.")
-
-// ErrResolveRecursion signals a recursion-depth limit.
-var ErrResolveRecursion = errors.New(
-	"Could not resolve name (recursion limit exceeded).")
-
-// ErrPublishFailed signals an error when attempting to publish.
-var ErrPublishFailed = errors.New("Could not publish name.")
 
 // Namesys represents a cohesive name publishing and resolving system.
 //

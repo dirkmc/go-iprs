@@ -1,4 +1,4 @@
-package recordstore
+package recordstore_resolver
 
 import (
 	"context"
@@ -14,20 +14,22 @@ import (
 	//	peer "gx/ipfs/QmXYjuNuxVzXKJCfWasQk1RqkhVLDM9jtUKhqc2WPQmFSB/go-libp2p-peer"
 	rsp "github.com/dirkmc/go-iprs/path"
 	rec "github.com/dirkmc/go-iprs/record"
+	rsu "github.com/dirkmc/go-iprs/util"
+	psh "github.com/dirkmc/go-iprs/publisher"
 	u "github.com/ipfs/go-ipfs-util"
 )
 
-func TestRoutingResolve(t *testing.T) {
+func TestDHTResolve(t *testing.T) {
 	ctx := context.Background()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
-	r := NewMockValueStore(context.Background(), id, dstore)
+	r := rsu.NewMockValueStore(context.Background(), id, dstore)
 	factory := rec.NewRecordFactory(r)
 	//pubkManager := rec.NewPublicKeyManager(r)
 	//eolRecordManager := rec.NewEolRecordManager(r, pubkManager)
 
-	resolver := NewRoutingResolver(r, factory, 0)
-	publisher := NewRoutingPublisher(r, dstore)
+	resolver := NewDHTResolver(r, factory, 0)
+	publisher := psh.NewDHTPublisher(r, dstore)
 
 	pk, pubk, err := testutil.RandTestKeyPair(512)
 	if err != nil {

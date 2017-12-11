@@ -1,9 +1,10 @@
-package recordstore
+package recordstore_util
 
 import (
 	"context"
 
 	c "github.com/dirkmc/go-iprs/certificate"
+	v "github.com/dirkmc/go-iprs/validation"
 	mockrouting "github.com/ipfs/go-ipfs/routing/mock"
 	record "github.com/libp2p/go-libp2p-record"
 	recordpb "github.com/libp2p/go-libp2p-record/pb"
@@ -35,8 +36,8 @@ func NewMockValueStore(ctx context.Context, id testutil.Identity, dstore ds.Data
 	vs.Validator[c.CertType] = c.CertificateValidator
 	vs.Selector[c.CertType] = c.CertificateSelector
 
-	vs.Validator["iprs"] = RecordChecker.validChecker
-	vs.Selector["iprs"] = RecordChecker.selector
+	vs.Validator["iprs"] = v.RecordChecker.ValidChecker
+	vs.Selector["iprs"] = v.RecordChecker.Selector
 
 	return vs
 }
