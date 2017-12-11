@@ -5,6 +5,15 @@ go-iprs
 
 > Go implementation of [IPRS spec](https://github.com/ipfs/specs/tree/master/iprs)
 
+## Table of Contents
+
+- [Status](#status)
+- [Install](#install)
+- [Usage](#usage)
+- [License](#license)
+
+## Status
+
 Note: This module is a work in progress
 
 During this process, you can check more about the state of this project on:
@@ -13,11 +22,6 @@ During this process, you can check more about the state of this project on:
 - [libp2p specs](https://github.com/libp2p/specs)
 - [IPRS spec](https://github.com/ipfs/specs/tree/master/iprs)
 
-## Table of Contents
-
-- [Install](#install)
-- [Usage](#usage)
-- [License](#license)
 
 ## Install
 
