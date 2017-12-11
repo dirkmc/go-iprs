@@ -57,7 +57,7 @@ dataStore := CreateADataStore()
 valueStore := CreateAValueStore()
 ns := NewNameSystem(valueStore, dataStore, 20)
 
-// Publish a record ...
+// Publish the record
 f := NewRecordFactory(valueStore)
 p := iprspath.IprsPath("/iprs/" + u.Hash(privateKey))
 eol := time.Now().Add(time.Hour)
@@ -66,9 +66,20 @@ err := ns.Publish(ctx, p, record)
 if err != nil {
 	fmt.Println(err)
 }
+```
 
-// ... retrieve the record's value from a different piece of code
-p, err := ns.resolve(ctx, p.String())
+#### Retrieving a record value
+
+```go
+iprsPath := GetIprsPath()
+privateKey := GenerateAPrivateKey()
+dataStore := CreateADataStore()
+valueStore := CreateAValueStore()
+ns := NewNameSystem(valueStore, dataStore, 20)
+val, err := ns.resolve(ctx, iprsPath)
+if err == nil {
+	fmt.Println(val)
+}
 ```
 
 ## License
