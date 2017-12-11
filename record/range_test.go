@@ -1,30 +1,17 @@
 package recordstore_record
 
 import (
-	"context"
 	"testing"
 	"time"
 	path "github.com/ipfs/go-ipfs/path"
 	pb "github.com/dirkmc/go-iprs/pb"
 	u "github.com/ipfs/go-ipfs-util"
 	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
-	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
-	dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
-	mockrouting "github.com/ipfs/go-ipfs/routing/mock"
-	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
 	rsp "github.com/dirkmc/go-iprs/path"
-	testutil "gx/ipfs/QmQgLZP9haZheimMHqqAjJh2LhRmNfEoZDfbtkpeMhi9xK/go-testutil"
 )
 
-// All this is just so we can get an IprsEntry for a given sequence number
-// and start/end timestamp
+// This is just so we can get an IprsEntry for a given sequence number and timestamps
 func setupNewRangeRecordFunc(t *testing.T) (func(uint64, *time.Time, *time.Time) *pb.IprsEntry) {
-	ctx := context.Background()
-	dstore := dssync.MutexWrap(ds.NewMapDatastore())
-	r := mockrouting.NewServer().ClientWithDatastore(ctx, testutil.RandIdentityOrFatal(t), dstore)
-	pubkManager := NewPublicKeyManager(r)
-	rangeRecordManager := NewRangeRecordManager(r, pubkManager)
-
 	// generate a key for signing the records
 	sr := u.NewSeededRand(15) // generate deterministic keypair
 	pk, _, err := ci.GenerateKeyPairWithReader(ci.RSA, 1024, sr)
@@ -32,41 +19,24 @@ func setupNewRangeRecordFunc(t *testing.T) (func(uint64, *time.Time, *time.Time)
 		t.Fatal(err)
 	}
 
+	f := NewRecordFactory(nil)
+
 	return func(seq uint64, start *time.Time, end *time.Time) *pb.IprsEntry {
-		iprsKey, err := rsp.FromString("/iprs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5")
+		r, err := f.NewRangeKeyRecord(path.Path("foo"), pk, start, end)
 		if err != nil {
 			t.Fatal(err)
 		}
-		rangeRec, err := rangeRecordManager.NewRecord(pk, path.Path("foo"), start, end)
+		e, err := r.Entry(seq)
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = rangeRec.Publish(ctx, iprsKey, seq)
-		if err != nil {
-			t.Fatal(err)
-		}
-		eBytes, err := r.GetValue(ctx, iprsKey.String())
-		if err != nil {
-			t.Fatal(err)
-		}
-		entry := new(pb.IprsEntry)
-		err = proto.Unmarshal(eBytes, entry)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return entry
+		return e
 	}
 }
 
 // Simmilar to the above but just invoke the NewRecord function
 // and return the record / error
-func setupNewRangeRecordFuncWithError(t *testing.T) (func(uint64, *time.Time, *time.Time) (*RangeRecord, error)) {
-	ctx := context.Background()
-	dstore := dssync.MutexWrap(ds.NewMapDatastore())
-	r := mockrouting.NewServer().ClientWithDatastore(ctx, testutil.RandIdentityOrFatal(t), dstore)
-	pubkManager := NewPublicKeyManager(r)
-	rangeRecordManager := NewRangeRecordManager(r, pubkManager)
-
+func setupNewRangeRecordFuncWithError(t *testing.T) (func(uint64, *time.Time, *time.Time) (*Record, error)) {
 	// generate a key for signing the records
 	sr := u.NewSeededRand(15) // generate deterministic keypair
 	pk, _, err := ci.GenerateKeyPairWithReader(ci.RSA, 1024, sr)
@@ -74,11 +44,12 @@ func setupNewRangeRecordFuncWithError(t *testing.T) (func(uint64, *time.Time, *t
 		t.Fatal(err)
 	}
 
-	return func(seq uint64, start *time.Time, end *time.Time) (*RangeRecord, error) {
-		return rangeRecordManager.NewRecord(pk, path.Path("foo"), start, end)
+	f := NewRecordFactory(nil)
+
+	return func(seq uint64, start *time.Time, end *time.Time) (*Record, error) {
+		return f.NewRangeKeyRecord(path.Path("foo"), pk, start, end)
 	}
 }
-
 
 func TestNewRangeRecord(t *testing.T) {
 	NewRecord := setupNewRangeRecordFuncWithError(t)
@@ -166,7 +137,7 @@ func TestRangeOrdering(t *testing.T) {
 }
 
 func assertRangeSelected(t *testing.T, r *pb.IprsEntry, from ...*pb.IprsEntry) {
-	err := AssertSelected(NewRangeRecordChecker().SelectRecord, r, from)
+	err := AssertSelected(RangeRecordChecker.SelectRecord, r, from)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +145,7 @@ func assertRangeSelected(t *testing.T, r *pb.IprsEntry, from ...*pb.IprsEntry) {
 
 func TestRangeValidation(t *testing.T) {
 	NewRecord := setupNewRangeRecordFunc(t)
-	ValidateRecord := NewRangeRecordChecker().ValidateRecord
+	ValidateRecord := RangeRecordChecker.ValidateRecord
 
 	var BeginningOfTime *time.Time
 	var EndOfTime *time.Time

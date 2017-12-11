@@ -96,7 +96,7 @@ func (ns *mpns) resolveOnce(ctx context.Context, name string) (path.Path, error)
 }
 
 // Publish implements Publisher
-func (ns *mpns) Publish(ctx context.Context, iprsKey rsp.IprsPath, record r.Record) error {
+func (ns *mpns) Publish(ctx context.Context, iprsKey rsp.IprsPath, record *r.Record) error {
 	//err := ns.publishers["/iprs/"].Publish(ctx, name, value)
 	err := ns.publishers["/iprs/"].Publish(ctx, iprsKey, record)
 	if err != nil {

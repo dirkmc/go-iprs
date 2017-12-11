@@ -35,9 +35,8 @@ func NewMockValueStore(ctx context.Context, id testutil.Identity, dstore ds.Data
 	vs.Validator[c.CertType] = c.CertificateValidator
 	vs.Selector[c.CertType] = c.CertificateSelector
 
-	recChecker := NewRecordChecker()
-	vs.Validator["iprs"] = recChecker.validChecker
-	vs.Selector["iprs"] = recChecker.selector
+	vs.Validator["iprs"] = RecordChecker.validChecker
+	vs.Selector["iprs"] = RecordChecker.selector
 
 	return vs
 }

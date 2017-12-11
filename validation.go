@@ -14,16 +14,15 @@ import (
 // unknown record type.
 var ErrUnrecognizedValidityType = errors.New("unrecognized validity type")
 
-type RecordChecker struct {
+type recordChecker struct {
 	validChecker *record.ValidChecker
 	selector     record.SelectorFunc
 }
 
-func NewRecordChecker() *RecordChecker {
+func newRecordChecker() *recordChecker {
 	validators := map[pb.IprsEntry_ValidityType]rec.RecordChecker{
-		pb.IprsEntry_EOL:       rec.NewEolRecordChecker(),
-		pb.IprsEntry_TimeRange: rec.NewRangeRecordChecker(),
-		pb.IprsEntry_Cert:      rec.NewCertRecordChecker(),
+		pb.IprsEntry_EOL:       rec.EolRecordChecker,
+		pb.IprsEntry_TimeRange: rec.RangeRecordChecker,
 	}
 
 	// Implements ValidatorFunc and verifies that the
@@ -105,7 +104,7 @@ func NewRecordChecker() *RecordChecker {
 		return validator.SelectRecord(entries, vals)
 	}
 
-	return &RecordChecker{
+	return &recordChecker{
 		validChecker: &record.ValidChecker{
 			Func: validateRecord,
 			Sign: true,
@@ -113,3 +112,5 @@ func NewRecordChecker() *RecordChecker {
 		selector: selectRecord,
 	}
 }
+
+var RecordChecker = newRecordChecker()

@@ -102,7 +102,7 @@ type Resolver interface {
 // Publisher is an object capable of publishing a Record
 type Publisher interface {
 	// Publish establishes a name-value mapping.
-	Publish(ctx context.Context, iprsKey rsp.IprsPath, record r.Record) error
+	Publish(ctx context.Context, iprsKey rsp.IprsPath, record *r.Record) error
 	/*
 		// Publish establishes a name-value mapping.
 		// TODO make this not PrivKey specific.

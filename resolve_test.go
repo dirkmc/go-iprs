@@ -23,8 +23,8 @@ func TestRoutingResolve(t *testing.T) {
 	id := testutil.RandIdentityOrFatal(t)
 	r := NewMockValueStore(context.Background(), id, dstore)
 	factory := rec.NewRecordFactory(r)
-	pubkManager := rec.NewPublicKeyManager(r)
-	eolRecordManager := rec.NewEolRecordManager(r, pubkManager)
+	//pubkManager := rec.NewPublicKeyManager(r)
+	//eolRecordManager := rec.NewEolRecordManager(r, pubkManager)
 
 	resolver := NewRoutingResolver(r, factory, 0)
 	publisher := NewRoutingPublisher(r, dstore)
@@ -45,7 +45,8 @@ func TestRoutingResolve(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	eolRecord := eolRecordManager.NewRecord(pk, h, ts.Add(time.Hour))
+	eolRecord := factory.NewEolKeyRecord(h, pk, ts.Add(time.Hour))
+	//eolRecord := eolRecordManager.NewRecord(pk, h, ts.Add(time.Hour))
 	publisher.Publish(ctx, iprsKey, eolRecord)
 	/*
 		pid, err := peer.IDFromPublicKey(pubk)

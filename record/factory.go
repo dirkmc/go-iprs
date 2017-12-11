@@ -15,50 +15,75 @@ import (
 )
 
 type RecordFactory struct {
-	eolManager *EolRecordManager
-	rangeManager *RangeRecordManager
-	certManager *CertRecordManager
-	managers map[pb.IprsEntry_ValidityType]RecordManager
+	r routing.ValueStore
+	pkm *PublicKeyManager
+	certm *c.CertificateManager
+	verifiers map[pb.IprsEntry_VerificationType]RecordVerifier
 }
 
 func NewRecordFactory(r routing.ValueStore) *RecordFactory {
-	certManager := c.NewCertificateManager(r)
-	pubkManager := NewPublicKeyManager(r)
+	pkm := NewPublicKeyManager(r)
+	certm := c.NewCertificateManager(r)
 
-	eolm := NewEolRecordManager(r, pubkManager)
-	rangem := NewRangeRecordManager(r, pubkManager)
-	certm := NewCertRecordManager(r, certManager)
-	managers := map[pb.IprsEntry_ValidityType]RecordManager{
-		pb.IprsEntry_EOL:       eolm,
-		pb.IprsEntry_TimeRange: rangem,
-		pb.IprsEntry_Cert:      certm,
-	}
+	verifiers := make(map[pb.IprsEntry_VerificationType]RecordVerifier)
+	verifiers[pb.IprsEntry_Key] = NewKeyRecordVerifier(pkm)
+	verifiers[pb.IprsEntry_Cert] = NewCertRecordVerifier(certm)
 
 	return &RecordFactory{
-		eolManager: eolm,
-		rangeManager: rangem,
-		certManager: certm,
-		managers: managers,
+		r: r,
+		pkm: pkm,
+		certm: certm,
+		verifiers: verifiers,
 	}
 }
 
 // Verifies that the given record is correctly signed etc
 func (f *RecordFactory) Verify(ctx context.Context, iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
-	manager, ok := f.managers[entry.GetValidityType()]
+	verifier, ok := f.verifiers[entry.GetVerificationType()]
 	if !ok {
-		return fmt.Errorf("Unrecognized validity type %s", entry.GetValidityType().String())
+		return fmt.Errorf("Unrecognized validity type %s", entry.GetVerificationType().String())
 	}
-	return manager.VerifyRecord(ctx, iprsKey, entry)
+	return verifier.VerifyRecord(ctx, iprsKey, entry)
 }
 
-func (f *RecordFactory) NewEolRecord(pk ci.PrivKey, p path.Path, eol time.Time) *EolRecord {
-	return f.eolManager.NewRecord(pk, p, eol)
+func (f *RecordFactory) NewKeyRecordSigner(pk ci.PrivKey) *KeyRecordSigner {
+	return NewKeyRecordSigner(f.pkm, pk)
 }
 
-func (f *RecordFactory) NewRangeRecord(pk ci.PrivKey, p path.Path, start *time.Time, end *time.Time) (*RangeRecord, error) {
-	return f.rangeManager.NewRecord(pk, p, start, end)
+func (f *RecordFactory) NewCertRecordSigner(cert *x509.Certificate, pk *rsa.PrivateKey) *CertRecordSigner {
+	return NewCertRecordSigner(f.certm, cert, pk)
 }
 
-func (f *RecordFactory) NewCertRecord(pk *rsa.PrivateKey, cert *x509.Certificate, p path.Path, eol time.Time) *CertRecord {
-	return f.certManager.NewRecord(pk, cert, p, eol)
+func (f *RecordFactory) NewRecord(vl RecordValidity, s RecordSigner, p path.Path) *Record {
+	return NewRecord(f.r, vl, s, p)
+}
+
+func (f *RecordFactory) NewEolKeyRecord(p path.Path, pk ci.PrivKey, eol time.Time) *Record {
+	vl := NewEolRecordValidity(eol)
+	s := f.NewKeyRecordSigner(pk)
+	return f.NewRecord(vl, s, p)
+}
+
+func (f *RecordFactory) NewEolCertRecord(p path.Path, cert *x509.Certificate, pk *rsa.PrivateKey, eol time.Time) *Record {
+	vl := NewEolRecordValidity(eol)
+	s := f.NewCertRecordSigner(cert, pk)
+	return f.NewRecord(vl, s, p)
+}
+
+func (f *RecordFactory) NewRangeKeyRecord(p path.Path, pk ci.PrivKey, start, end *time.Time) (*Record, error) {
+	vl, err := NewRangeRecordValidity(start, end)
+	if err != nil {
+		return nil, err
+	}
+	s := f.NewKeyRecordSigner(pk)
+	return f.NewRecord(vl, s, p), nil
+}
+
+func (f *RecordFactory) NewRangeCertRecord(p path.Path, cert *x509.Certificate, pk *rsa.PrivateKey, start, end *time.Time) (*Record, error) {
+	vl, err := NewRangeRecordValidity(start, end)
+	if err != nil {
+		return nil, err
+	}
+	s := f.NewCertRecordSigner(cert, pk)
+	return f.NewRecord(vl, s, p), nil
 }

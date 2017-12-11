@@ -2,82 +2,43 @@ package recordstore_record
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"time"
 	pb "github.com/dirkmc/go-iprs/pb"
-	path "github.com/ipfs/go-ipfs/path"
-	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
-	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
 	rsp "github.com/dirkmc/go-iprs/path"
 	u "github.com/ipfs/go-ipfs-util"
-	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 )
 
-// ***** EolRecordManager ***** //
-type EolRecordManager struct {
-	SignedRecordManager
-}
+// ErrExpiredRecord should be returned when an Iprs record is
+// invalid due to being too old
+var ErrExpiredRecord = errors.New("expired record")
 
-func NewEolRecordManager(r routing.ValueStore, m *PublicKeyManager) *EolRecordManager {
-	return &EolRecordManager{
-		SignedRecordManager {
-			routing: r,
-			pubkManager: m,
-		},
-	}
-}
-
-func (m *EolRecordManager) NewRecord(pk ci.PrivKey, val path.Path, eol time.Time) *EolRecord {
-	return &EolRecord{
-		m: m,
-		pk: pk,
-		val: val,
-		eol: eol,
-	}
-}
-
-func (v *EolRecordManager) VerifyRecord(ctx context.Context, iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
-	return v.CheckPublicKeySignature(ctx, iprsKey, entry)
-}
-
-
-// ***** EolRecord ***** //
-
-type EolRecord struct {
-	m *EolRecordManager
-	pk ci.PrivKey
-	val path.Path
+type EolRecordValidity struct {
 	eol time.Time
 }
 
-func (r *EolRecord) Publish(ctx context.Context, iprsKey rsp.IprsPath, seq uint64) error {
-	entry := new(pb.IprsEntry)
-
-	entry.Value = []byte(r.val)
-	typ := pb.IprsEntry_EOL
-	entry.ValidityType = &typ
-	entry.Sequence = proto.Uint64(seq)
-	entry.Validity = []byte(u.FormatRFC3339(r.eol))
-
-	return r.m.PublishRecord(ctx, iprsKey, entry, r.pk)
+func NewEolRecordValidity(eol time.Time) *EolRecordValidity {
+	return &EolRecordValidity{ eol }
 }
 
-
-// ***** EolRecordChecker ***** //
-type EolRecordChecker struct {}
-
-func NewEolRecordChecker() *EolRecordChecker {
-	return &EolRecordChecker{}
+func (v *EolRecordValidity) Validity() []byte {
+	return []byte(u.FormatRFC3339(v.eol))
 }
 
-func (v *EolRecordChecker) SelectRecord(recs []*pb.IprsEntry, vals [][]byte) (int, error) {
+func (v *EolRecordValidity) ValidityType() *pb.IprsEntry_ValidityType {
+	var t = pb.IprsEntry_EOL
+	return &t
+}
+
+type eolRecordChecker struct {}
+
+func (v *eolRecordChecker) SelectRecord(recs []*pb.IprsEntry, vals [][]byte) (int, error) {
 	return EolSelectRecord(recs, vals, func(e *pb.IprsEntry) (string, error) {
 		return string(e.GetValidity()), nil
 	})
 }
 
-func (v *EolRecordChecker) ValidateRecord(iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
+func (v *eolRecordChecker) ValidateRecord(iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
 	return EolValidityCheck(string(entry.GetValidity()))
 }
 
@@ -144,3 +105,4 @@ func EolSelectRecord(recs []*pb.IprsEntry, vals [][]byte, getEol GetEolFunc) (in
 	return best_i, nil
 }
 
+var EolRecordChecker = &eolRecordChecker{}

@@ -55,13 +55,15 @@ func (r *routingResolver) cacheSet(name string, val path.Path, rec *pb.IprsEntry
 
 	// if completely unspecified, just use one minute
 	ttl := DefaultResolverCacheTTL
+	/*
+	TODO: Not sure if this is still being used by IPNS
 	if rec.Ttl != nil {
 		recttl := time.Duration(rec.GetTtl())
 		if recttl >= 0 {
 			ttl = recttl
 		}
 	}
-
+	*/
 	cacheTil := time.Now().Add(ttl)
 	eol, ok := checkEOL(rec)
 	if ok && eol.Before(cacheTil) {
@@ -141,6 +143,8 @@ func (r *routingResolver) resolveOnce(ctx context.Context, name string) (path.Pa
 	}
 
 	// Verify record signatures etc are correct
+	log.Debugf("Verifying record %s", iprsKey)
+
 	err = r.verifier.Verify(ctx, iprsKey, entry)
 	if err != nil {
 		log.Warningf("Failed to verify entry at %s", name)

@@ -1,21 +1,24 @@
+// protoc --go_out=. *.proto
 package recordstore.pb;
 
 message IprsEntry {
 	enum ValidityType {
-		// setting an EOL says "this record is valid until..."
+		// Setting an EOL says "this record is valid until..."
 		EOL = 0;
-		// setting a time range says "this record is valid between x and y"
+		// Setting a time range says "this record is valid between x and y"
 		TimeRange = 1;
-		// setting a Certificate says "this record is valid if signed by a certificate issued by this certificate"
-		Cert = 2;
+	}
+	enum VerificationType {
+		// Key verification verifies a record is signed with a private key
+		Key = 0;
+		// Cert verification verifies a record is signed by a certificate issued by a CA
+		Cert = 1;
 	}
 	required bytes value = 1;
 	required bytes signature = 2;
-
-	optional ValidityType validityType = 3;
-	optional bytes validity = 4;
-
-	optional uint64 sequence = 5;
-
-	optional uint64 ttl = 6;
+	required VerificationType verificationType = 3;
+	required bytes verification = 4;
+	optional ValidityType validityType = 5;
+	optional bytes validity = 6;
+	optional uint64 sequence = 7;
 }

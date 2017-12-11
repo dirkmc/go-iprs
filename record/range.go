@@ -2,17 +2,12 @@ package recordstore_record
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"strings"
 	"time"
 	pb "github.com/dirkmc/go-iprs/pb"
-	path "github.com/ipfs/go-ipfs/path"
-	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
-	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
 	rsp "github.com/dirkmc/go-iprs/path"
 	u "github.com/ipfs/go-ipfs-util"
-	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 )
 
 // ErrRecordTimeRange should be returned when an attempt is made to
@@ -22,78 +17,44 @@ var ErrRecordTimeRange = errors.New("record end time before start time")
 // invalid due to not yet being valid
 var ErrPendingRecord = errors.New("record not yet valid")
 
-// ***** RangeRecordManager ***** //
-type RangeRecordManager struct {
-	SignedRecordManager
-}
 
-func NewRangeRecordManager(r routing.ValueStore, m *PublicKeyManager) *RangeRecordManager {
-	return &RangeRecordManager{
-		SignedRecordManager {
-			routing: r,
-			pubkManager: m,
-		},
-	}
-}
-
-func (m *RangeRecordManager) NewRecord(pk ci.PrivKey, val path.Path, start *time.Time, end *time.Time) (*RangeRecord, error) {
-	if start != nil && end != nil && (*start).After(*end) {
-		return nil, ErrRecordTimeRange
-	}
-
-	return &RangeRecord{
-		m: m,
-		pk: pk,
-		val: val,
-		start: start,
-		end: end,
-	}, nil
-}
-
-func (v *RangeRecordManager) VerifyRecord(ctx context.Context, iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
-	return v.CheckPublicKeySignature(ctx, iprsKey, entry)
-}
-
-
-// ***** RangeRecord ***** //
-
-type RangeRecord struct {
-	m *RangeRecordManager
-	pk ci.PrivKey
-	val path.Path
+type RangeRecordValidity struct {
 	start *time.Time
 	end *time.Time
 }
 
-func (r *RangeRecord) Publish(ctx context.Context, iprsKey rsp.IprsPath, seq uint64) error {
+func NewRangeRecordValidity(start *time.Time, end *time.Time) (*RangeRecordValidity, error) {
+	if start != nil && end != nil && (*start).After(*end) {
+		return nil, ErrRecordTimeRange
+	}
+
+	return &RangeRecordValidity{ start, end }, nil
+}
+
+func (v *RangeRecordValidity) Validity() []byte {
 	startFmt := "-∞"
-	if r.start != nil {
-		startFmt = u.FormatRFC3339(*r.start)
+	if v.start != nil {
+		startFmt = u.FormatRFC3339(*v.start)
 	}
 	endFmt := "∞"
-	if r.end != nil {
-		endFmt = u.FormatRFC3339(*r.end)
+	if v.end != nil {
+		endFmt = u.FormatRFC3339(*v.end)
 	}
 
-	entry := new(pb.IprsEntry)
-
-	entry.Value = []byte(r.val)
-	typ := pb.IprsEntry_TimeRange
-	entry.ValidityType = &typ
-	entry.Sequence = proto.Uint64(seq)
-	entry.Validity = []byte(startFmt + "~" + endFmt)
-
-	return r.m.PublishRecord(ctx, iprsKey, entry, r.pk)
+	return []byte(startFmt + "~" + endFmt)
 }
 
-// ***** RangeRecordChecker ***** //
-type RangeRecordChecker struct {}
-
-func NewRangeRecordChecker() *RangeRecordChecker {
-	return &RangeRecordChecker{}
+func (v *RangeRecordValidity) ValidityType() *pb.IprsEntry_ValidityType {
+	t := pb.IprsEntry_TimeRange
+	return &t
 }
 
-func (v *RangeRecordChecker) SelectRecord(recs []*pb.IprsEntry, vals [][]byte) (int, error) {
+
+//rangeRecordChecker
+
+type rangeRecordChecker struct {}
+
+func (v *rangeRecordChecker) SelectRecord(recs []*pb.IprsEntry, vals [][]byte) (int, error) {
 	var best_seq uint64
 	best_i := -1
 
@@ -142,7 +103,7 @@ func (v *RangeRecordChecker) SelectRecord(recs []*pb.IprsEntry, vals [][]byte) (
 	return best_i, nil
 }
 
-func (v *RangeRecordChecker) timeRange(r *pb.IprsEntry) (*[2]*time.Time, error) {
+func (v *rangeRecordChecker) timeRange(r *pb.IprsEntry) (*[2]*time.Time, error) {
 	timeRange := strings.Split(string(r.GetValidity()), "~")
 	if len(timeRange) != 2 {
 		return nil, errors.New("Invalid TimeRange record")
@@ -172,8 +133,7 @@ func (v *RangeRecordChecker) timeRange(r *pb.IprsEntry) (*[2]*time.Time, error) 
 	return &[2]*time.Time{startPt, endPt}, nil
 }
 
-// ValidateRecord verifies that the given entry is valid.
-func (v *RangeRecordChecker) ValidateRecord(iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
+func (v *rangeRecordChecker) ValidateRecord(iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
 	t, err := v.timeRange(entry)
 	if err != nil {
 		log.Warning("Failed to parse IPRS Time Range record")
@@ -187,3 +147,5 @@ func (v *RangeRecordChecker) ValidateRecord(iprsKey rsp.IprsPath, entry *pb.Iprs
 	}
 	return nil
 }
+
+var RangeRecordChecker = &rangeRecordChecker{}

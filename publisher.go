@@ -34,10 +34,9 @@ func NewRoutingPublisher(route routing.ValueStore, ds ds.Datastore) *iprsPublish
 	return &iprsPublisher{routing: route, ds: ds}
 }
 
-// Publish implements Publisher. Accepts a keypair and a value,
+// Publish implements Publisher. Accepts an IPRS path and a record,
 // and publishes it out to the routing system
-//func (p *iprsPublisher) Publish(ctx context.Context, k ci.PrivKey, value path.Path) error {
-func (p *iprsPublisher) Publish(ctx context.Context, iprsKey rsp.IprsPath, record r.Record) error {
+func (p *iprsPublisher) Publish(ctx context.Context, iprsKey rsp.IprsPath, record *r.Record) error {
 	log.Debugf("Publish %s", iprsKey)
 
 	// get previous records sequence number
@@ -50,6 +49,7 @@ func (p *iprsPublisher) Publish(ctx context.Context, iprsKey rsp.IprsPath, recor
 	seqnum++
 
 	log.Debugf("Putting record with new seq no %d for %s", seqnum, iprsKey)
+
 	return record.Publish(ctx, iprsKey, seqnum)
 }
 

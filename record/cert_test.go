@@ -23,23 +23,22 @@ import (
 	// logging "github.com/ipfs/go-log"
 )
 
-func TestCertRecordValidation(t *testing.T) {
+func TestCertRecordVerification(t *testing.T) {
 //	logging.SetAllLoggers(gologging.DEBUG)
 
 	ctx := context.Background()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	r := mockrouting.NewServer().ClientWithDatastore(ctx, testutil.RandIdentityOrFatal(t), dstore)
 	certManager := c.NewCertificateManager(r)
-	certRecordManager := NewCertRecordManager(r, certManager)
+	verifier := NewCertRecordVerifier(certManager)
 
-	// Simplifies publishing a record to routing and then getting it out again
-	NewRecord := func() (func(*rsa.PrivateKey, *x509.Certificate, uint64, time.Time) *pb.IprsEntry) {
-		return func(pk *rsa.PrivateKey, cert *x509.Certificate, seq uint64, eol time.Time) *pb.IprsEntry {
-			iprsKey, err := rsp.FromString("/iprs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV")
-			if err != nil {
-				t.Fatal(err)
-			}
-			err = certRecordManager.NewRecord(pk, cert, path.Path("foo"), eol).Publish(ctx, iprsKey, seq)
+	// Simplifies creating a record and publishing it to routing
+	NewRecord := func() (func(rsp.IprsPath, *rsa.PrivateKey, *x509.Certificate, uint64, time.Time) *pb.IprsEntry) {
+		return func(iprsKey rsp.IprsPath, pk *rsa.PrivateKey, cert *x509.Certificate, seq uint64, eol time.Time) *pb.IprsEntry {
+			vl := NewEolRecordValidity(eol)
+			s := NewCertRecordSigner(certManager, cert, pk)
+			rec := NewRecord(r, vl, s, path.Path("foo"))
+			err := rec.Publish(ctx, iprsKey, seq)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -56,8 +55,7 @@ func TestCertRecordValidation(t *testing.T) {
 		}
 	}()
 
-	// Setup: Put a CA certificate and a child of the CA certificate
-	// into the Certificate Manager's storage
+	// Setup: Create a CA certificate and a child of the CA certificate
 
 	// CA Certificate
 	caCert, caPk, err := generateCACertificate("ca cert")
@@ -66,7 +64,7 @@ func TestCertRecordValidation(t *testing.T) {
 	}
 
 	// Child of CA Certificate
-	cert, pk, err := generateChildCertificate("child cert", caCert, caPk)
+	childCert, pk, err := generateChildCertificate("child cert", caCert, caPk)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +75,9 @@ func TestCertRecordValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	unrelatedCaCertHash, err := certManager.PutCertificate(ctx, unrelatedCaCert)
+	// Put the unrelated certificate onto the network
+	// so it's available to the verifier
+	_, err = certManager.PutCertificate(ctx, unrelatedCaCert)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,46 +86,35 @@ func TestCertRecordValidation(t *testing.T) {
 	ts := time.Now()
 
 	// Sign record with CA cert signature
-	e1 := NewRecord(caPk, caCert, 1, ts.Add(time.Hour))
+	caCertIprsKey := getIprsPathFromCert(t, caCert, "/myIprsName")
+	e1 := NewRecord(caCertIprsKey, caPk, caCert, 1, ts.Add(time.Hour))
 
 	// Record is valid if the key is prefixed with the CA cert hash
 	// that signed the certificate
 	// /iprs/<ca cert hash>/any name
-	caCertHash := c.GetCertificateHash(caCert)
-	caCertKeyStr := "/iprs/" + caCertHash + "/myIprsName"
-	caCertKey, err := rsp.FromString(caCertKeyStr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = certRecordManager.VerifyRecord(ctx, caCertKey, e1)
+	err = verifier.VerifyRecord(ctx, caCertIprsKey, e1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Record is not valid if the key is prefixed with a different
-	// CA cert hash
-	unrelatedCaCertKeyStr := "/iprs/" + unrelatedCaCertHash + "/myIprsName"
-	unrelatedCaCertKey, err := rsp.FromString(unrelatedCaCertKeyStr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = certRecordManager.VerifyRecord(ctx, unrelatedCaCertKey, e1)
+	// CA cert hash (even though the unrelated cert is retrievable by the
+	// CertificateManager, ie it's available on the network)
+	unrelatedCaCertIprsKey := getIprsPathFromCert(t, unrelatedCaCert, "/myIprsName")
+	err = verifier.VerifyRecord(ctx, unrelatedCaCertIprsKey, e1)
 	if err == nil {
 		t.Fatal("Failed to return error for validation with different cert")
 	}
 
-	// Sign record with client cert signature
-	e2 := NewRecord(pk, cert, 1, ts.Add(time.Hour))
+
+	// Sign record with CA child cert signature
+	childCertIprsKey := getIprsPathFromCert(t, caCert, "/myDelegatedFriendsIprsName")
+	e2 := NewRecord(childCertIprsKey, pk, childCert, 1, ts.Add(time.Hour))
 
 	// Record is valid if the key is prefixed with the CA cert hash
 	// that issued the signing certificate
 	// /iprs/<ca (issuing) cert hash>/any name
-	certKeyStr := "/iprs/" + caCertHash + "/myDelegatedFriendsIprsName"
-	certKey, err := rsp.FromString(certKeyStr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = certRecordManager.VerifyRecord(ctx, certKey, e2)
+	err = verifier.VerifyRecord(ctx, childCertIprsKey, e2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,15 +124,16 @@ func TestCertRecordValidation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e3 := NewRecord(unrelatedPk, cert, 1, ts.Add(time.Hour))
+	e3 := NewRecord(childCertIprsKey, unrelatedPk, childCert, 1, ts.Add(time.Hour))
 
-	err = certRecordManager.VerifyRecord(ctx, certKey, e3)
+	err = verifier.VerifyRecord(ctx, childCertIprsKey, e3)
 	if err == nil {
 		t.Fatal(err)
 	}
 
 /*
-	// TODO: Implement these using mocks for CertificateManager
+	TODO: Use mocks to make these tests possible
+	(at the moment Publish publishes the cert to thet network so there is no error)
 
 	// Record is not valid if the CA cert could not be retrieved
 	// from the network
@@ -151,11 +141,12 @@ func TestCertRecordValidation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e4 := NewRecord(tmpPk, tmpCaCert, 1, ts.Add(time.Hour))
+	tmpCaCertIprsKey := getIprsPathFromCert(t, tmpCaCert, "/somePath")
+	e4 := NewRecord(tmpCaCertIprsKey, tmpPk, tmpCaCert, 1, ts.Add(time.Hour))
 
 	// Note: We never added the cert to the Certificate Manager
-	tmpCaCertKey := "/iprs/" + c.GetCertificateHash(tmpCaCert) + "/somePath"
-	err = certRecordManager.VerifyRecord(ctx, tmpCaCertKey, e4)
+	// so it will not be available to the verifier
+	err = verifier.VerifyRecord(ctx, tmpCaCertIprsKey, e4)
 	if err == nil {
 		t.Fatal(err)
 	}
@@ -166,15 +157,25 @@ func TestCertRecordValidation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e5 := NewRecord(tmpChildPk, tmpChildCert, 1, ts.Add(time.Hour))
+	tmpChildCertIprsKey := getIprsPathFromCert(t, caCert, "/somePath")
+	e5 := NewRecord(tmpChildCertIprsKey, tmpChildPk, tmpChildCert, 1, ts.Add(time.Hour))
 
 	// Note: Issuing cert is in Certificate Manager but not child cert
-	tmpChildCertKey := "/iprs/" + caCertHash + "/somePath"
-	err = certRecordManager.VerifyRecord(ctx, tmpChildCertKey, e5)
+	err = verifier.VerifyRecord(ctx, tmpChildCertIprsKey, e5)
 	if err == nil {
 		t.Fatal(err)
 	}
 */
+}
+
+func getIprsPathFromCert(t *testing.T, cert *x509.Certificate, relativePath string) rsp.IprsPath {
+	certHash := c.GetCertificateHash(cert)
+	iprsKeyStr := "/iprs/" + certHash + relativePath
+	iprsKey, err := rsp.FromString(iprsKeyStr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return iprsKey
 }
 
 func generateCACertificate(org string) (*x509.Certificate, *rsa.PrivateKey, error) {
@@ -203,15 +204,15 @@ func generateCertificate(org string, parent *x509.Certificate, parentKey *rsa.Pr
 		return nil, nil, err
 	}
 
-	parentCertKey := parentKey
-	if parentCertKey == nil {
-		parentCertKey = priv
+	parentCertIprsKey := parentKey
+	if parentCertIprsKey == nil {
+		parentCertIprsKey = priv
 	}
 	parentCert := parent
 	if parentCert == nil {
 		parentCert = template
 	}
-	derBytes, err := x509.CreateCertificate(rand.Reader, template, parentCert, &priv.PublicKey, parentCertKey)
+	derBytes, err := x509.CreateCertificate(rand.Reader, template, parentCert, &priv.PublicKey, parentCertIprsKey)
 	if err != nil {
 		return nil, nil, err
 	}
