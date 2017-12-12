@@ -179,7 +179,7 @@ func (r *DHTResolver) ResolveOnce(ctx context.Context, name string) (string, err
 		// Not a multihash, probably a new record
 		val := string(entry.GetValue())
 
-		// Check it can be parsed as a path or IPRS record
+		// Check it can be parsed as a path (IPNS/IPFS) or IPRS record
 		_, err := path.ParsePath(val)
 		if err != nil && !rsp.IsValid(val) {
 			return "", fmt.Errorf("Could not parse IPRS record value [%s]", val)
