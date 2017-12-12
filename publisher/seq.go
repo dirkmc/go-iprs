@@ -40,12 +40,12 @@ func (s *SeqManager) GetPreviousSeqNo(ctx context.Context, iprsKey rsp.IprsPath)
 	if prevrec == nil {
 		// If we don't have a ValueStore to search, just start from zero
 		if s.routing == nil {
-			log.Debugf("No previous seq no found for %s, start at 0", iprsKey)
+			log.Debugf("No previous seq num found for %s, start at 0", iprsKey)
 			return 0, nil
 		}
 
 		// Try and check the dht for a record
-		log.Debugf("Checking DHT for seq no for %s", iprsKey)
+		log.Debugf("Checking DHT for seq num for %s", iprsKey)
 
 		ctx, cancel := context.WithTimeout(ctx, time.Second*30)
 		defer cancel()
@@ -53,7 +53,7 @@ func (s *SeqManager) GetPreviousSeqNo(ctx context.Context, iprsKey rsp.IprsPath)
 		rv, err := s.routing.GetValue(ctx, iprsKey.String())
 		if err != nil {
 			// No record found in the DHT either
-			log.Debugf("No previous seq no found in DHT for %s, start at 0", iprsKey)
+			log.Debugf("No previous seq num found in DHT for %s, start at 0", iprsKey)
 			return 0, nil
 		}
 

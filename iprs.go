@@ -18,6 +18,8 @@ import (
 
 var log = logging.Logger("iprs")
 
+const DefaultRecordTTL = 24 * time.Hour
+
 // mpns (a multi-protocol NameSystem) implements generic IPFS naming.
 //
 // Uses several Resolvers:
@@ -43,7 +45,7 @@ func NewNameSystem(r routing.ValueStore, ds ds.Datastore, cachesize int) NameSys
 			"dht": rsv.NewDHTResolver(r, factory, cachesize),
 		},
 		publishers: map[string]Publisher{
-			"/iprs/": psh.NewDHTPublisher(r, seqm),
+			"/iprs/": psh.NewDHTPublisher(seqm),
 		},
 	}
 }

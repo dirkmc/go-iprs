@@ -2,33 +2,21 @@ package iprs_publisher
 
 import (
 	"context"
-	"errors"
-	"time"
 
 	rsp "github.com/dirkmc/go-iprs/path"
 	r "github.com/dirkmc/go-iprs/record"
-	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
 	logging "github.com/ipfs/go-log"
 )
 
 var log = logging.Logger("iprs_publisher")
 
-// ErrPublishFailed signals an error when attempting to publish.
-var ErrPublishFailed = errors.New("Could not publish name.")
-
-const PublishPutValTimeout = time.Minute
-const DefaultRecordTTL = 24 * time.Hour
-
-// iprsPublisher is capable of publishing and resolving names to the IPFS
-// routing system.
 type iprsPublisher struct {
-	routing routing.ValueStore
 	seqm *SeqManager
 }
 
 // NewDHTPublisher constructs a publisher for the IPFS Routing name system.
-func NewDHTPublisher(route routing.ValueStore, s *SeqManager) *iprsPublisher {
-	return &iprsPublisher{ route, s }
+func NewDHTPublisher(s *SeqManager) *iprsPublisher {
+	return &iprsPublisher{ s }
 }
 
 // Publish implements Publisher. Accepts an IPRS path and a record,
