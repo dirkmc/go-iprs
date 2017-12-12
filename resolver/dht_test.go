@@ -29,7 +29,7 @@ func TestDHTResolve(t *testing.T) {
 	//eolRecordManager := rec.NewEolRecordManager(r, pubkManager)
 
 	resolver := NewDHTResolver(r, factory, 0)
-	publisher := psh.NewDHTPublisher(r, dstore)
+	publisher := psh.NewDHTPublisher(r, psh.NewSeqManager(dstore, r))
 
 	pk, pubk, err := testutil.RandTestKeyPair(512)
 	if err != nil {

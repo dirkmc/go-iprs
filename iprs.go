@@ -35,6 +35,7 @@ type mpns struct {
 
 func NewNameSystem(r routing.ValueStore, ds ds.Datastore, cachesize int) NameSystem {
 	factory := rec.NewRecordFactory(r)
+	seqm := psh.NewSeqManager(ds, r)
 	return &mpns{
 		resolvers: map[string]rsv.Lookup{
 			"dns": rsv.NewDNSResolver(),
@@ -42,7 +43,7 @@ func NewNameSystem(r routing.ValueStore, ds ds.Datastore, cachesize int) NameSys
 			"dht": rsv.NewDHTResolver(r, factory, cachesize),
 		},
 		publishers: map[string]Publisher{
-			"/iprs/": psh.NewDHTPublisher(r, ds),
+			"/iprs/": psh.NewDHTPublisher(r, seqm),
 		},
 	}
 }
