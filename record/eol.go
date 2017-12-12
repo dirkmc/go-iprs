@@ -33,19 +33,17 @@ func (v *EolRecordValidity) ValidityType() *pb.IprsEntry_ValidityType {
 type eolRecordChecker struct {}
 
 func (v *eolRecordChecker) SelectRecord(recs []*pb.IprsEntry, vals [][]byte) (int, error) {
-	return EolSelectRecord(recs, vals, func(e *pb.IprsEntry) (string, error) {
-		return string(e.GetValidity()), nil
-	})
+	return EolSelectRecord(recs, vals)
 }
 
 func (v *eolRecordChecker) ValidateRecord(iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
-	return EolValidityCheck(string(entry.GetValidity()))
+	return EolValidityCheck(entry)
 }
 
-func EolValidityCheck(eolStr string) error {
-	t, err := u.ParseRFC3339(eolStr)
+func EolValidityCheck(entry *pb.IprsEntry) error {
+	t, err := EolParseValidity(entry)
 	if err != nil {
-		log.Warningf("Failed to parse time from IPRS record EOL [%s]", eolStr)
+		log.Warningf("Failed to parse time from IPRS record EOL [%s]", entry.GetValidity())
 		return err
 	}
 	if time.Now().After(t) {
@@ -54,9 +52,11 @@ func EolValidityCheck(eolStr string) error {
 	return nil
 }
 
-type GetEolFunc func(*pb.IprsEntry) (string, error)
+func EolParseValidity(entry *pb.IprsEntry) (time.Time, error) {
+	return u.ParseRFC3339(string(entry.GetValidity()))
+}
 
-func EolSelectRecord(recs []*pb.IprsEntry, vals [][]byte, getEol GetEolFunc) (int, error) {
+func EolSelectRecord(recs []*pb.IprsEntry, vals [][]byte) (int, error) {
 	var best_seq uint64
 	best_i := -1
 
@@ -69,22 +69,12 @@ func EolSelectRecord(recs []*pb.IprsEntry, vals [][]byte, getEol GetEolFunc) (in
 			best_seq = r.GetSequence()
 			best_i = i
 		} else if r.GetSequence() == best_seq {
-			eols, err := getEol(r)
+			rt, err := u.ParseRFC3339(string(r.GetValidity()))
 			if err != nil {
 				continue
 			}
 
-			rt, err := u.ParseRFC3339(eols)
-			if err != nil {
-				continue
-			}
-
-			beols, err := getEol(recs[best_i])
-			if err != nil {
-				continue
-			}
-
-			bestt, err := u.ParseRFC3339(beols)
+			bestt, err := u.ParseRFC3339(string(recs[best_i].GetValidity()))
 			if err != nil {
 				continue
 			}

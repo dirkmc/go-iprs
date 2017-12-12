@@ -69,12 +69,12 @@ func (v *rangeRecordChecker) SelectRecord(recs []*pb.IprsEntry, vals [][]byte) (
 			best_i = i
 		} else if r.GetSequence() == best_seq {
 			// If sequence number is equal, look at time range
-			t, err := v.timeRange(r)
+			t, err := RangeParseValidity(r)
 			if err != nil {
 				continue
 			}
 
-			bestt, err := v.timeRange(recs[best_i])
+			bestt, err := RangeParseValidity(recs[best_i])
 			if err != nil {
 				continue
 			}
@@ -103,7 +103,7 @@ func (v *rangeRecordChecker) SelectRecord(recs []*pb.IprsEntry, vals [][]byte) (
 	return best_i, nil
 }
 
-func (v *rangeRecordChecker) timeRange(r *pb.IprsEntry) (*[2]*time.Time, error) {
+func RangeParseValidity(r *pb.IprsEntry) (*[2]*time.Time, error) {
 	timeRange := strings.Split(string(r.GetValidity()), "~")
 	if len(timeRange) != 2 {
 		return nil, errors.New("Invalid TimeRange record")
@@ -134,7 +134,7 @@ func (v *rangeRecordChecker) timeRange(r *pb.IprsEntry) (*[2]*time.Time, error) 
 }
 
 func (v *rangeRecordChecker) ValidateRecord(iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
-	t, err := v.timeRange(entry)
+	t, err := RangeParseValidity(entry)
 	if err != nil {
 		log.Warning("Failed to parse IPRS Time Range record")
 		return err

@@ -2,6 +2,7 @@ package iprs_resolver
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	rsp "github.com/dirkmc/go-iprs/path"
@@ -10,7 +11,6 @@ import (
 	path "github.com/ipfs/go-ipfs/path"
 	cid "gx/ipfs/QmNp85zy9RLrQ5oQD4hPyS39ezrrXpcaa7R4Y9kxdWQLLQ/go-cid"
 	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
-	u "gx/ipfs/QmSU6eubNdhXjFBJBSksTp8kv8YRub8mGAPv8tVJHmL2EU/go-ipfs-util"
 	mh "gx/ipfs/QmU9a9NV9RdPNwZQDYd5uKsm6N6LJLSvLbywDDYFbaaC6P/go-multihash"
 	lru "gx/ipfs/QmVYxfoJQiZijTgPNHCHgHELvQpbsJNTg6Crmc3dQkj3yy/golang-lru"
 	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
@@ -65,7 +65,7 @@ func (r *DHTResolver) cacheSet(name string, val string, rec *pb.IprsEntry) {
 	}
 	*/
 	cacheTil := time.Now().Add(ttl)
-	eol, ok := checkEOL(rec)
+	eol, ok := getCacheEndTime(rec)
 	if ok && eol.Before(cacheTil) {
 		cacheTil = eol
 	}
@@ -100,6 +100,27 @@ func NewDHTResolver(route routing.ValueStore, verifier *rec.RecordFactory, cache
 		cache:    cache,
 		verifier: verifier,
 	}
+}
+
+func getCacheEndTime(e *pb.IprsEntry) (time.Time, bool) {
+	// If it's an EOL record, it's just the EOL
+	if e.GetValidityType() == pb.IprsEntry_EOL {
+		eol, err := rec.EolParseValidity(e)
+		if err != nil {
+			return time.Time{}, false
+		}
+		return eol, true
+	}
+	// If it's a TimeRange record, it's the end time
+	// (note that a nil end time means infinity)
+	if e.GetValidityType() == pb.IprsEntry_TimeRange {
+		r, err := rec.RangeParseValidity(e)
+		if err != nil || r[1] == nil {
+			return time.Time{}, false
+		}
+		return *r[1], true
+	}
+	return time.Time{}, false
 }
  
 // Resolve implements Resolver.
@@ -152,16 +173,16 @@ func (r *DHTResolver) ResolveOnce(ctx context.Context, name string) (string, err
 		return "", err
 	}
 
-	// check for old style record:
+	// Check for old style IPNS record:
 	valh, err := mh.Cast(entry.GetValue())
 	if err != nil {
 		// Not a multihash, probably a new record
 		val := string(entry.GetValue())
 
-		// Check it can be parsed as a path
+		// Check it can be parsed as a path or IPRS record
 		_, err := path.ParsePath(val)
-		if err != nil {
-			return "", err
+		if err != nil && !rsp.IsValid(val) {
+			return "", fmt.Errorf("Could not parse IPRS record value [%s]", val)
 		}
 
 		r.cacheSet(name, val, entry)
@@ -173,15 +194,4 @@ func (r *DHTResolver) ResolveOnce(ctx context.Context, name string) (string, err
 		r.cacheSet(name, p.String(), entry)
 		return p.String(), nil
 	}
-}
-
-func checkEOL(e *pb.IprsEntry) (time.Time, bool) {
-	if e.GetValidityType() == pb.IprsEntry_EOL {
-		eol, err := u.ParseRFC3339(string(e.GetValidity()))
-		if err != nil {
-			return time.Time{}, false
-		}
-		return eol, true
-	}
-	return time.Time{}, false
 }
