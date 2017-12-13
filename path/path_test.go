@@ -17,6 +17,17 @@ func TestPathParsing(t *testing.T) {
 		"/iprs/badhash": false,
 		"/iprs/badhash/": false,
 		"/iprs/badhash/a": false,
+		"/ipns/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n": true,
+		"/ipns/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n/a": true,
+		"/ipns/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n/a/b/c/d/e/f": true,
+		"/ipns/": false,
+		"ipns/":  false,
+		"ipns/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n": false,
+		"ipns/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n/": false,
+		"ipns/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n/a/": false,
+		"/ipns/badhash": false,
+		"/ipns/badhash/": false,
+		"/ipns/badhash/a": false,
 	}
 
 	for p, expected := range cases {
