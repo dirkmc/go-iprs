@@ -5,16 +5,16 @@ import (
 	"strings"
 	"time"
 
-	isd "gx/ipfs/QmZmmuAXgX73UQmX1jRKjTGmjzq24Jinqkq8vzkBtno4uX/go-is-domain"
-	mh "gx/ipfs/QmU9a9NV9RdPNwZQDYd5uKsm6N6LJLSvLbywDDYFbaaC6P/go-multihash"
-	path "github.com/ipfs/go-ipfs/path"
+	rsp "github.com/dirkmc/go-iprs/path"
 	psh "github.com/dirkmc/go-iprs/publisher"
 	r "github.com/dirkmc/go-iprs/record"
 	rec "github.com/dirkmc/go-iprs/record"
-	rsp "github.com/dirkmc/go-iprs/path"
 	rsv "github.com/dirkmc/go-iprs/resolver"
+	path "github.com/ipfs/go-ipfs/path"
 	logging "github.com/ipfs/go-log"
 	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
+	mh "gx/ipfs/QmU9a9NV9RdPNwZQDYd5uKsm6N6LJLSvLbywDDYFbaaC6P/go-multihash"
+	isd "gx/ipfs/QmZmmuAXgX73UQmX1jRKjTGmjzq24Jinqkq8vzkBtno4uX/go-is-domain"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 )
 
@@ -42,9 +42,9 @@ func NewNameSystem(r routing.ValueStore, ds ds.Datastore, cachesize int) NameSys
 	seqm := psh.NewSeqManager(ds, r)
 	return &mpns{
 		resolvers: map[string]rsv.Lookup{
-			"dns": rsv.NewDNSResolver(),
-			//"proquint": new(ProquintResolver),
-			"dht": rsv.NewDHTResolver(r, factory, cachesize),
+			"dns":      rsv.NewDNSResolver(),
+			"proquint": new(rsv.ProquintResolver),
+			"dht":      rsv.NewDHTResolver(r, factory, cachesize),
 		},
 		publishers: map[string]Publisher{
 			"/iprs/": psh.NewDHTPublisher(seqm),
@@ -122,7 +122,6 @@ func (ns *mpns) ResolveOnce(ctx context.Context, name string) (string, error) {
 
 // Publish implements Publisher
 func (ns *mpns) Publish(ctx context.Context, iprsKey rsp.IprsPath, record *r.Record) error {
-	//err := ns.publishers["/iprs/"].Publish(ctx, name, value)
 	err := ns.publishers["/iprs/"].Publish(ctx, iprsKey, record)
 	if err != nil {
 		return err

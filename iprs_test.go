@@ -10,7 +10,6 @@ import (
 	rsv "github.com/dirkmc/go-iprs/resolver"
 	// offroute "github.com/ipfs/go-ipfs/routing/offline"
 	// "github.com/ipfs/go-ipfs/unixfs"
-
 	// ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 	// ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	// dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
@@ -60,7 +59,7 @@ func mockResolverTwo() *mockResolver {
 }
 
 func TestNamesysResolution(t *testing.T) {
-//	logging.SetAllLoggers(gologging.DEBUG)
+	//	logging.SetAllLoggers(gologging.DEBUG)
 
 	r := &mpns{
 		resolvers: map[string]rsv.Lookup{
@@ -85,6 +84,7 @@ func TestNamesysResolution(t *testing.T) {
 	testResolution(t, r, "/ipns/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD", 2, "/ipns/QmbCMUZw6JFeZ7Wp9jkzbye3Fzp2GGcPgC3nmeUjfVF87n", ErrRecursion)
 	testResolution(t, r, "/ipns/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD", 3, "/ipns/QmatmE9msSfkKxoffpHwNLNKgwZG8eT9Bud6YoPab52vpy", ErrRecursion)
 }
+
 /*
 func TestPublishWithCache0(t *testing.T) {
 	dst := dssync.MutexWrap(ds.NewMapDatastore())
