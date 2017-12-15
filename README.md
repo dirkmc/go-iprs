@@ -39,7 +39,7 @@ IPRS Records are created with a `RecordValidity` and a `RecordSigner`. `RecordVa
 
 ### Examples
 
-#### Creating an EOL record signed with a public key
+#### Creating an EOL record signed with a private key
 
 ```go
 privateKey := GenerateAPrivateKey()
