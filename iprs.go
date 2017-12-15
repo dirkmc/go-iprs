@@ -10,9 +10,9 @@ import (
 	r "github.com/dirkmc/go-iprs/record"
 	rec "github.com/dirkmc/go-iprs/record"
 	rsv "github.com/dirkmc/go-iprs/resolver"
+	vs "github.com/dirkmc/go-iprs/vs"
 	path "github.com/ipfs/go-ipfs/path"
 	logging "github.com/ipfs/go-log"
-	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
 	mh "gx/ipfs/QmU9a9NV9RdPNwZQDYd5uKsm6N6LJLSvLbywDDYFbaaC6P/go-multihash"
 	isd "gx/ipfs/QmZmmuAXgX73UQmX1jRKjTGmjzq24Jinqkq8vzkBtno4uX/go-is-domain"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
@@ -37,14 +37,14 @@ type mpns struct {
 	publishers map[string]Publisher
 }
 
-func NewNameSystem(r routing.ValueStore, ds ds.Datastore, cachesize int) NameSystem {
-	factory := rec.NewRecordFactory(r)
-	seqm := psh.NewSeqManager(ds, r)
+func NewNameSystem(vstore vs.ValueStore, ds ds.Datastore, cachesize int) NameSystem {
+	factory := rec.NewRecordFactory(vstore)
+	seqm := psh.NewSeqManager(ds, vstore)
 	return &mpns{
 		resolvers: map[string]rsv.Lookup{
 			"dns":      rsv.NewDNSResolver(),
 			"proquint": new(rsv.ProquintResolver),
-			"dht":      rsv.NewDHTResolver(r, factory, cachesize),
+			"dht":      rsv.NewDHTResolver(vs.NewCachedValueStore(vstore, cachesize, nil), factory),
 		},
 		publishers: map[string]Publisher{
 			"/iprs/": psh.NewDHTPublisher(seqm),

@@ -14,21 +14,22 @@ import (
 	//	peer "gx/ipfs/QmXYjuNuxVzXKJCfWasQk1RqkhVLDM9jtUKhqc2WPQmFSB/go-libp2p-peer"
 	rsp "github.com/dirkmc/go-iprs/path"
 	rec "github.com/dirkmc/go-iprs/record"
-	rsu "github.com/dirkmc/go-iprs/util"
 	psh "github.com/dirkmc/go-iprs/publisher"
 	u "github.com/ipfs/go-ipfs-util"
+	vs "github.com/dirkmc/go-iprs/vs"
 )
 
 func TestDHTResolve(t *testing.T) {
 	ctx := context.Background()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
-	r := rsu.NewMockValueStore(context.Background(), id, dstore)
+	r := vs.NewMockValueStore(context.Background(), id, dstore)
 	factory := rec.NewRecordFactory(r)
 	//pubkManager := rec.NewPublicKeyManager(r)
 	//eolRecordManager := rec.NewEolRecordManager(r, pubkManager)
 
-	resolver := NewDHTResolver(r, factory, 0)
+	vstore := vs.NewCachedValueStore(r, 0, nil)
+	resolver := NewDHTResolver(vstore, factory)
 	publisher := psh.NewDHTPublisher(psh.NewSeqManager(dstore, r))
 
 	pk, pubk, err := testutil.RandTestKeyPair(512)
