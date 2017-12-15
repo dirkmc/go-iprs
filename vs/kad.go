@@ -31,6 +31,10 @@ func (vs *KadValueStore) GetValue(ctx context.Context, k string) ([]byte, error)
 	return vs.rvs.GetValue(ctx, k)
 }
 
+func (vs *KadValueStore) GetValues(ctx context.Context, k string, n int) ([]routing.RecvdVal, error) {
+	return vs.rvs.GetValues(ctx, k, n)
+}
+
 func (vs *KadValueStore) GetLocalValue(ctx context.Context, k string) ([]byte, error) {
 	// Get the data out of the DHT's local datastore
 	r, err := vs.ds.Get(dshelp.NewKeyFromBinary([]byte(k)))

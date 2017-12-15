@@ -16,14 +16,7 @@ import (
 	u "github.com/ipfs/go-ipfs-util"
 )
 
-func TestCacheSizeZero(t *testing.T) {
-	ctx := context.Background()
-	dstore := dssync.MutexWrap(ds.NewMapDatastore())
-	id := testutil.RandIdentityOrFatal(t)
-	r := NewMockValueStore(context.Background(), id, dstore)
-	factory := rec.NewRecordFactory(r)
-	vstore := NewCachedValueStore(r, 0, nil)
-
+func getEolRecord(t *testing.T, ts time.Time, r ValueStore) (rsp.IprsPath, *rec.Record) {
 	pk, pubk, err := testutil.RandTestKeyPair(512)
 	if err != nil {
 		t.Fatal(err)
@@ -31,7 +24,6 @@ func TestCacheSizeZero(t *testing.T) {
 
 	p := path.FromString("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
 
-	ts := time.Now().Add(time.Hour)
 	pubkBytes, err := pubk.Bytes()
 	if err != nil {
 		t.Fatal(err)
@@ -40,7 +32,18 @@ func TestCacheSizeZero(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	eolRecord := factory.NewEolKeyRecord(p, pk, ts)
+	factory := rec.NewRecordFactory(r)
+	return iprsKey, factory.NewEolKeyRecord(p, pk, ts)
+}
+
+func TestCacheSizeZero(t *testing.T) {
+	ctx := context.Background()
+	dstore := dssync.MutexWrap(ds.NewMapDatastore())
+	id := testutil.RandIdentityOrFatal(t)
+	r := NewMockValueStore(context.Background(), id, dstore)
+	vstore := NewCachedValueStore(r, 0, nil)
+	ts := time.Now().Add(time.Hour)
+	iprsKey, eolRecord := getEolRecord(t, ts, r)
 
 	// Put the entry
 	e, err := eolRecord.Entry(1)
@@ -75,26 +78,9 @@ func TestCacheSizeTen(t *testing.T) {
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
 	r := NewMockValueStore(context.Background(), id, dstore)
-	factory := rec.NewRecordFactory(r)
 	vstore := NewCachedValueStore(r, 10, nil)
-
-	pk, pubk, err := testutil.RandTestKeyPair(512)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	p := path.FromString("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
-
 	ts := time.Now().Add(time.Hour)
-	pubkBytes, err := pubk.Bytes()
-	if err != nil {
-		t.Fatal(err)
-	}
-	iprsKey, err := rsp.FromString("/iprs/" + u.Hash(pubkBytes).B58String())
-	if err != nil {
-		t.Fatal(err)
-	}
-	eolRecord := factory.NewEolKeyRecord(p, pk, ts)
+	iprsKey, eolRecord := getEolRecord(t, ts, r)
 
 	// Put the entry
 	e, err := eolRecord.Entry(1)
@@ -148,26 +134,9 @@ func TestCacheEolExpired(t *testing.T) {
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
 	r := NewMockValueStore(context.Background(), id, dstore)
-	factory := rec.NewRecordFactory(r)
 	vstore := NewCachedValueStore(r, 10, nil)
-
-	pk, pubk, err := testutil.RandTestKeyPair(512)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	p := path.FromString("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
-
-	ts := time.Now().Add(time.Millisecond)
-	pubkBytes, err := pubk.Bytes()
-	if err != nil {
-		t.Fatal(err)
-	}
-	iprsKey, err := rsp.FromString("/iprs/" + u.Hash(pubkBytes).B58String())
-	if err != nil {
-		t.Fatal(err)
-	}
-	eolRecord := factory.NewEolKeyRecord(p, pk, ts)
+	ts := time.Now().Add(time.Millisecond * 100)
+	iprsKey, eolRecord := getEolRecord(t, ts, r)
 
 	// Put the entry
 	e, err := eolRecord.Entry(1)
@@ -197,7 +166,7 @@ func TestCacheEolExpired(t *testing.T) {
 	}
 
 	// Sleep beyond the entry's EOL
-	time.Sleep(time.Millisecond * 2)
+	time.Sleep(time.Millisecond * 101)
 
 	// Remove entry from routing
 	err = r.DeleteValue(iprsKey.String())
@@ -227,7 +196,6 @@ func TestCacheTimeRangeExpired(t *testing.T) {
 	}
 
 	p := path.FromString("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
-
 	ts := time.Now()
 	pubkBytes, err := pubk.Bytes()
 	if err != nil {
@@ -237,7 +205,7 @@ func TestCacheTimeRangeExpired(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	InTenMillis := ts.Add(time.Millisecond)
+	InTenMillis := ts.Add(time.Millisecond * 100)
 	rangeRecord, err := factory.NewRangeKeyRecord(p, pk, nil, &InTenMillis)
 	if err != nil {
 		t.Fatal(err)
@@ -271,7 +239,7 @@ func TestCacheTimeRangeExpired(t *testing.T) {
 	}
 
 	// Sleep beyond the entry's EOL
-	time.Sleep(time.Millisecond * 11)
+	time.Sleep(time.Millisecond * 101)
 
 	// Remove entry from routing
 	err = r.DeleteValue(iprsKey.String())

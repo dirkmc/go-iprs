@@ -9,6 +9,7 @@ import (
 type ValueStore interface {
 	routing.ValueStore
 
-	// GetLocalValue only checks the local data store for value corresponding to given Key.
+	// GetLocalValue only checks the local data store for value corresponding to given key
+	// (it doesn't got out to the network)
 	GetLocalValue(context.Context, string) ([]byte, error)
 }
