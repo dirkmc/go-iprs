@@ -15,7 +15,6 @@ import (
 	logging "github.com/ipfs/go-log"
 	mh "gx/ipfs/QmU9a9NV9RdPNwZQDYd5uKsm6N6LJLSvLbywDDYFbaaC6P/go-multihash"
 	isd "gx/ipfs/QmZmmuAXgX73UQmX1jRKjTGmjzq24Jinqkq8vzkBtno4uX/go-is-domain"
-	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 )
 
 var log = logging.Logger("iprs")
@@ -37,7 +36,7 @@ type mpns struct {
 	publishers map[string]Publisher
 }
 
-func NewNameSystem(vstore vs.ValueStore, ds ds.Datastore, cachesize int) NameSystem {
+func NewNameSystem(vstore vs.ValueStore, cachesize int) NameSystem {
 	factory := rec.NewRecordFactory(vstore)
 	seqm := psh.NewSeqManager(vstore)
 	cachedvs := vs.NewCachedValueStore(vstore, cachesize, nil)
