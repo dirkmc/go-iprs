@@ -39,12 +39,13 @@ type mpns struct {
 
 func NewNameSystem(vstore vs.ValueStore, ds ds.Datastore, cachesize int) NameSystem {
 	factory := rec.NewRecordFactory(vstore)
-	seqm := psh.NewSeqManager(ds, vstore)
+	seqm := psh.NewSeqManager(vstore)
+	cachedvs := vs.NewCachedValueStore(vstore, cachesize, nil)
 	return &mpns{
 		resolvers: map[string]rsv.Lookup{
 			"dns":      rsv.NewDNSResolver(),
 			"proquint": new(rsv.ProquintResolver),
-			"dht":      rsv.NewDHTResolver(vs.NewCachedValueStore(vstore, cachesize, nil), factory),
+			"dht":      rsv.NewDHTResolver(cachedvs, factory),
 		},
 		publishers: map[string]Publisher{
 			"/iprs/": psh.NewDHTPublisher(seqm),

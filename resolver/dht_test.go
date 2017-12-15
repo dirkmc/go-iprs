@@ -25,12 +25,10 @@ func TestDHTResolve(t *testing.T) {
 	id := testutil.RandIdentityOrFatal(t)
 	r := vs.NewMockValueStore(context.Background(), id, dstore)
 	factory := rec.NewRecordFactory(r)
-	//pubkManager := rec.NewPublicKeyManager(r)
-	//eolRecordManager := rec.NewEolRecordManager(r, pubkManager)
-
 	vstore := vs.NewCachedValueStore(r, 0, nil)
+	kvstore := vs.NewKadValueStore(dstore, r)
 	resolver := NewDHTResolver(vstore, factory)
-	publisher := psh.NewDHTPublisher(psh.NewSeqManager(dstore, r))
+	publisher := psh.NewDHTPublisher(psh.NewSeqManager(kvstore))
 
 	pk, pubk, err := testutil.RandTestKeyPair(512)
 	if err != nil {
@@ -49,7 +47,6 @@ func TestDHTResolve(t *testing.T) {
 		t.Fatal(err)
 	}
 	eolRecord := factory.NewEolKeyRecord(h, pk, ts.Add(time.Hour))
-	//eolRecord := eolRecordManager.NewRecord(pk, h, ts.Add(time.Hour))
 	publisher.Publish(ctx, iprsKey, eolRecord)
 	/*
 		pid, err := peer.IDFromPublicKey(pubk)
