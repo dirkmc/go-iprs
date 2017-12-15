@@ -122,55 +122,5 @@ func (ns *mpns) ResolveOnce(ctx context.Context, name string) (string, error) {
 
 // Publish implements Publisher
 func (ns *mpns) Publish(ctx context.Context, iprsKey rsp.IprsPath, record *r.Record) error {
-	err := ns.publishers["/iprs/"].Publish(ctx, iprsKey, record)
-	if err != nil {
-		return err
-	}
-	// TODO: What is the idea of this call? Don't get what it's doing
-	//ns.addToDHTCache(name, value, time.Now().Add(DefaultRecordTTL))
-	return nil
+	return ns.publishers["/iprs/"].Publish(ctx, iprsKey, record)
 }
-
-/*
-func (ns *mpns) PublishWithEOL(ctx context.Context, name ci.PrivKey, value path.Path, eol time.Time) error {
-	err := ns.publishers["/iprs/"].PublishWithEOL(ctx, name, value, eol)
-	if err != nil {
-		return err
-	}
-	ns.addToDHTCache(name, value, eol)
-	return nil
-}
-
-func (ns *mpns) addToDHTCache(key ci.PrivKey, value path.Path, eol time.Time) {
-	rr, ok := ns.resolvers["dht"].(*routingResolver)
-	if !ok {
-		// should never happen, purely for sanity
-		log.Panicf("unexpected type %T as DHT resolver.", ns.resolvers["dht"])
-	}
-	if rr.cache == nil {
-		// resolver has no caching
-		return
-	}
-
-	var err error
-	value, err = path.ParsePath(value.String())
-	if err != nil {
-		log.Error("could not parse path")
-		return
-	}
-
-	name, err := peer.IDFromPrivateKey(key)
-	if err != nil {
-		log.Error("while adding to cache, could not get peerid from private key")
-		return
-	}
-
-	if time.Now().Add(DefaultResolverCacheTTL).Before(eol) {
-		eol = time.Now().Add(DefaultResolverCacheTTL)
-	}
-	rr.cache.Add(name.Pretty(), cacheEntry{
-		val: value,
-		eol: eol,
-	})
-}
-*/
