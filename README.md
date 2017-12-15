@@ -35,6 +35,43 @@ Note that `go-iprs` is packaged with Gx, so it is recommended to use Gx to insta
 
 ## Usage
 
+IPRS Records are created with a `RecordValidity` and a `RecordSigner`. `RecordValidity` indicates under what conditions the record is considered valid, for example before a certain date (EOL) or between certain dates (TimeRange). `RecordSigner` adds verification data to a record, by signing it, eg with a private key, or with an x509 certificate. A factory is provided that helps construct these records from the `RecordValidity` and `RecordSigner`, with some methods for constructing common combinations (eg a record with an EOL that is signed with a private key)
+
+### Examples
+
+#### Creating an EOL record signed with a public key
+
+```go
+privateKey := GenerateAPrivateKey()
+valueStore := CreateAValueStore()
+ns := NewNameSystem(valueStore, 20)
+
+// Create the record
+f := NewRecordFactory(valueStore)
+p := iprspath.IprsPath("/iprs/" + u.Hash(privateKey))
+eol := time.Now().Add(time.Hour)
+record = f.NewEolKeyRecord(path.Path("/ipfs/myIpfsHash"), privateKey, eol)
+
+// Publish the record
+record = f.NewEolKeyRecord(path.Path("/ipfs/myIpfsHash"), privateKey, eol)
+err := ns.Publish(ctx, p, record)
+if err != nil {
+	fmt.Println(err)
+}
+```
+
+#### Retrieving a record value
+
+```go
+iprsPath := GetIprsPath()
+valueStore := CreateAValueStore()
+ns := NewNameSystem(valueStore, 20)
+val, err := ns.resolve(ctx, iprsPath)
+if err == nil {
+	fmt.Println(val)
+}
+```
+
 ### Using Gx and Gx-go
 
 This module is packaged with [Gx](https://github.com/whyrusleeping/gx). In order to use it in your own project it is recommended that you:
@@ -50,41 +87,6 @@ gx-go --rewrite
 ```
 
 Please check [Gx](https://github.com/whyrusleeping/gx) and [Gx-go](https://github.com/whyrusleeping/gx-go) documentation for more information.
-
-### Examples
-
-#### Creating an EOL record signed with a public key
-
-```go
-privateKey := GenerateAPrivateKey()
-dataStore := CreateADataStore()
-valueStore := CreateAValueStore()
-ns := NewNameSystem(valueStore, dataStore, 20)
-
-// Publish the record
-f := NewRecordFactory(valueStore)
-p := iprspath.IprsPath("/iprs/" + u.Hash(privateKey))
-eol := time.Now().Add(time.Hour)
-record = f.NewEolKeyRecord(path.Path("/ipfs/myIpfsHash"), privateKey, eol)
-err := ns.Publish(ctx, p, record)
-if err != nil {
-	fmt.Println(err)
-}
-```
-
-#### Retrieving a record value
-
-```go
-iprsPath := GetIprsPath()
-privateKey := GenerateAPrivateKey()
-dataStore := CreateADataStore()
-valueStore := CreateAValueStore()
-ns := NewNameSystem(valueStore, dataStore, 20)
-val, err := ns.resolve(ctx, iprsPath)
-if err == nil {
-	fmt.Println(val)
-}
-```
 
 ## License
 
