@@ -53,7 +53,6 @@ eol := time.Now().Add(time.Hour)
 record = f.NewEolKeyRecord(path.Path("/ipfs/myIpfsHash"), privateKey, eol)
 
 // Publish the record
-record = f.NewEolKeyRecord(path.Path("/ipfs/myIpfsHash"), privateKey, eol)
 err := ns.Publish(ctx, p, record)
 if err != nil {
 	fmt.Println(err)
