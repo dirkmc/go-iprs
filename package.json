@@ -148,9 +148,9 @@
       "version": "2.0.2"
     },
     {
-      "hash": "QmbxkgUceEcuSZ4ZdBA3x74VUDSSYjHYmmeEqkjxbtZ6Jg",
+      "hash": "QmWGtsyPYEoiqTtWLpeUA2jpW4YSZgarKDD2zivYAFz7sR",
       "name": "go-libp2p-record",
-      "version": "2.1.5"
+      "version": "2.1.6"
     },
     {
       "author": "whyrusleeping",
