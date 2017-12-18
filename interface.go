@@ -1,10 +1,10 @@
 /*
 Package namesys implements resolvers and publishers for the IPFS
-naming system (IPNS).
+record system (IPRS).
 
 The core of IPFS is an immutable, content-addressable Merkle graph.
 That works well for many use cases, but doesn't allow you to answer
-questions like "what is Alice's current homepage?".  The mutable name
+questions like "what is Alice's current homepage?".  The mutable record
 system allows Alice to publish information like:
 
   The current homepage for alice.example.com is
@@ -17,9 +17,9 @@ or:
   is
   /ipfs/Qmcqtw8FfrVSBaRmbWwHxt3AuySBhJLcvmFYi3Lbc4xnwj
 
-The mutable name system also allows users to resolve those references
+The mutable record system also allows users to resolve those references
 to find the immutable IPFS object currently referenced by a given
-mutable name.
+mutable record.
 
 For command-line bindings to this functionality, see:
 
@@ -36,19 +36,19 @@ import (
 	path "github.com/ipfs/go-ipfs/path"
 )
 
-// Namesys represents a cohesive name publishing and resolving system.
+// RecordSystem represents a cohesive record publishing and resolving system.
 //
-// Publishing a name is the process of establishing a mapping, a key-value
+// Publishing a record is the process of establishing a mapping, a key-value
 // pair, according to naming rules and databases.
 //
-// Resolving a name is the process of looking up the value associated with the
-// key (name).
-type NameSystem interface {
+// Resolving a record is the process of looking up the value associated with the
+// key.
+type RecordSystem interface {
 	Resolver
 	Publisher
 }
 
-// Resolver is an object capable of resolving names.
+// Resolver is an object capable of resolving records.
 type Resolver interface {
 
 	// Resolve performs a recursive lookup, returning the dereferenced

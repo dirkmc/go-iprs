@@ -2,22 +2,22 @@ package iprs_record
 
 import (
 	"context"
-	"crypto/x509"
 	"crypto/rsa"
+	"crypto/x509"
 	"fmt"
-	"time"
 	c "github.com/dirkmc/go-iprs/certificate"
-	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
-	path "github.com/ipfs/go-ipfs/path"
-	pb "github.com/dirkmc/go-iprs/pb"
-	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
 	rsp "github.com/dirkmc/go-iprs/path"
+	pb "github.com/dirkmc/go-iprs/pb"
+	path "github.com/ipfs/go-ipfs/path"
+	routing "gx/ipfs/QmPCGUjMRuBcPybZFpjhzpifwPP9wPRoiy5geTQKU4vqWA/go-libp2p-routing"
+	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
+	"time"
 )
 
 type RecordFactory struct {
-	r routing.ValueStore
-	pkm *PublicKeyManager
-	certm *c.CertificateManager
+	r         routing.ValueStore
+	pkm       *PublicKeyManager
+	certm     *c.CertificateManager
 	verifiers map[pb.IprsEntry_VerificationType]RecordVerifier
 }
 
@@ -30,9 +30,9 @@ func NewRecordFactory(r routing.ValueStore) *RecordFactory {
 	verifiers[pb.IprsEntry_Cert] = NewCertRecordVerifier(certm)
 
 	return &RecordFactory{
-		r: r,
-		pkm: pkm,
-		certm: certm,
+		r:         r,
+		pkm:       pkm,
+		certm:     certm,
 		verifiers: verifiers,
 	}
 }

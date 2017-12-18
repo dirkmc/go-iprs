@@ -4,23 +4,23 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"time"
-	logging "github.com/ipfs/go-log"
-	path "github.com/ipfs/go-ipfs/path"
-	pb "github.com/dirkmc/go-iprs/pb"
-	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
-	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
 	rsp "github.com/dirkmc/go-iprs/path"
+	pb "github.com/dirkmc/go-iprs/pb"
+	path "github.com/ipfs/go-ipfs/path"
+	logging "github.com/ipfs/go-log"
+	routing "gx/ipfs/QmPCGUjMRuBcPybZFpjhzpifwPP9wPRoiy5geTQKU4vqWA/go-libp2p-routing"
+	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
+	"time"
 )
 
-const PublishPutValTimeout = time.Second*10
+const PublishPutValTimeout = time.Second * 10
 
 var log = logging.Logger("iprs.record")
 
 type RecordValidity interface {
 	ValidityType() *pb.IprsEntry_ValidityType
 	// Return the validity data for the record
-	Validity() []byte
+	Validity() ([]byte, error)
 }
 
 type RecordChecker interface {
@@ -31,9 +31,11 @@ type RecordChecker interface {
 }
 
 type RecordSigner interface {
+	// Get the base IPRS path, eg /iprs/<certificate hash>
+	BasePath() (rsp.IprsPath, error)
 	VerificationType() *pb.IprsEntry_VerificationType
 	// Return the verification data for the record
-	Verification() []byte
+	Verification() ([]byte, error)
 	// Publish any data required for verification to the network
 	// eg public key, certificate etc
 	PublishVerification(ctx context.Context, iprsKey rsp.IprsPath, entry *pb.IprsEntry) error
@@ -47,31 +49,40 @@ type RecordVerifier interface {
 
 type Record struct {
 	routing routing.ValueStore
-	vl RecordValidity
-	s RecordSigner
-	val path.Path
+	vl      RecordValidity
+	s       RecordSigner
+	val     path.Path
 }
 
 func NewRecord(r routing.ValueStore, vl RecordValidity, s RecordSigner, val path.Path) *Record {
 	return &Record{
 		routing: r,
-		vl: vl,
-		s: s,
-		val: val,
+		vl:      vl,
+		s:       s,
+		val:     val,
 	}
 }
 
 func (r *Record) Entry(seq uint64) (*pb.IprsEntry, error) {
 	entry := new(pb.IprsEntry)
 
+	validity, err := r.vl.Validity()
+	if err != nil {
+		return nil, err
+	}
+	verification, err := r.s.Verification()
+	if err != nil {
+		return nil, err
+	}
+
 	entry.Sequence = proto.Uint64(seq)
 	entry.Value = []byte(r.val)
 	entry.ValidityType = r.vl.ValidityType()
-	entry.Validity = r.vl.Validity()
+	entry.Validity = validity
 	entry.VerificationType = r.s.VerificationType()
-	entry.Verification = r.s.Verification()
+	entry.Verification = verification
 
-	err := r.s.SignRecord(entry)
+	err = r.s.SignRecord(entry)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +90,13 @@ func (r *Record) Entry(seq uint64) (*pb.IprsEntry, error) {
 	return entry, nil
 }
 
+func (r *Record) BasePath() (rsp.IprsPath, error) {
+	return r.s.BasePath()
+}
+
 func (r *Record) Publish(ctx context.Context, iprsKey rsp.IprsPath, seq uint64) error {
+	// TODO: Check iprsKey is valid for this type of RecordSigner
+
 	entry, err := r.Entry(seq)
 	if err != nil {
 		return err

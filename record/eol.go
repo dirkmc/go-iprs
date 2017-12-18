@@ -21,8 +21,8 @@ func NewEolRecordValidity(eol time.Time) *EolRecordValidity {
 	return &EolRecordValidity{ eol }
 }
 
-func (v *EolRecordValidity) Validity() []byte {
-	return []byte(u.FormatRFC3339(v.eol))
+func (v *EolRecordValidity) Validity() ([]byte, error) {
+	return []byte(u.FormatRFC3339(v.eol)), nil
 }
 
 func (v *EolRecordValidity) ValidityType() *pb.IprsEntry_ValidityType {

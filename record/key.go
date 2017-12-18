@@ -18,16 +18,25 @@ func NewKeyRecordSigner(m *PublicKeyManager, pk ci.PrivKey) *KeyRecordSigner {
 	return &KeyRecordSigner{ m, pk }
 }
 
+func (s *KeyRecordSigner) BasePath() (rsp.IprsPath, error) {
+	h, err := GetPublicKeyHash(s.pk.GetPublic())
+	if err != nil {
+		return rsp.NilPath, err
+	}
+	return rsp.FromString("/iprs/" + h)
+}
+
 func (s *KeyRecordSigner) VerificationType() *pb.IprsEntry_VerificationType {
 	t := pb.IprsEntry_Key
 	return &t
 }
 
-func (s *KeyRecordSigner) Verification() []byte {
-	return []byte{}
+func (s *KeyRecordSigner) Verification() ([]byte, error) {
+	return []byte{}, nil
 }
 
 func (s *KeyRecordSigner) PublishVerification(ctx context.Context, iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
+	// TODO: Check iprsKey is valid for this type of RecordSigner
 	return s.m.PutPublicKey(ctx, s.pk.GetPublic())
 }
 

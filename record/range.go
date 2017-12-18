@@ -31,7 +31,7 @@ func NewRangeRecordValidity(start *time.Time, end *time.Time) (*RangeRecordValid
 	return &RangeRecordValidity{ start, end }, nil
 }
 
-func (v *RangeRecordValidity) Validity() []byte {
+func (v *RangeRecordValidity) Validity() ([]byte, error) {
 	startFmt := "-∞"
 	if v.start != nil {
 		startFmt = u.FormatRFC3339(*v.start)
@@ -41,7 +41,7 @@ func (v *RangeRecordValidity) Validity() []byte {
 		endFmt = u.FormatRFC3339(*v.end)
 	}
 
-	return []byte(startFmt + "~" + endFmt)
+	return []byte(startFmt + "~" + endFmt), nil
 }
 
 func (v *RangeRecordValidity) ValidityType() *pb.IprsEntry_ValidityType {

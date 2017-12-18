@@ -8,15 +8,15 @@ import (
 
 	path "github.com/ipfs/go-ipfs/path"
 	//mockrouting "github.com/ipfs/go-ipfs/routing/mock"
-	testutil "gx/ipfs/QmQgLZP9haZheimMHqqAjJh2LhRmNfEoZDfbtkpeMhi9xK/go-testutil"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
+	testutil "gx/ipfs/QmeDA8gNhvRTsbrjEieay5wezupJDiky8xvCzDABbsGzmp/go-testutil"
 	//	peer "gx/ipfs/QmXYjuNuxVzXKJCfWasQk1RqkhVLDM9jtUKhqc2WPQmFSB/go-libp2p-peer"
 	rsp "github.com/dirkmc/go-iprs/path"
-	rec "github.com/dirkmc/go-iprs/record"
 	psh "github.com/dirkmc/go-iprs/publisher"
-	u "github.com/ipfs/go-ipfs-util"
+	rec "github.com/dirkmc/go-iprs/record"
 	vs "github.com/dirkmc/go-iprs/vs"
+	u "github.com/ipfs/go-ipfs-util"
 )
 
 func TestDHTResolve(t *testing.T) {

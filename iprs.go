@@ -13,15 +13,16 @@ import (
 	vs "github.com/dirkmc/go-iprs/vs"
 	path "github.com/ipfs/go-ipfs/path"
 	logging "github.com/ipfs/go-log"
-	mh "gx/ipfs/QmU9a9NV9RdPNwZQDYd5uKsm6N6LJLSvLbywDDYFbaaC6P/go-multihash"
+	mh "gx/ipfs/QmYeKnKpubCMRiq3PGZcTREErthbb5Q9cXsCoSkD9bjEBd/go-multihash"
 	isd "gx/ipfs/QmZmmuAXgX73UQmX1jRKjTGmjzq24Jinqkq8vzkBtno4uX/go-is-domain"
 )
 
 var log = logging.Logger("iprs")
 
 const DefaultRecordTTL = 24 * time.Hour
+const DefaultResolverCacheTTL = time.Minute
 
-// mpns (a multi-protocol NameSystem) implements generic IPFS naming.
+// mprs (a multi-protocol NameSystem) implements generic IPFS naming.
 //
 // Uses several Resolvers:
 // (a) IPFS routing naming: SFS-like PKI names.
@@ -31,16 +32,16 @@ const DefaultRecordTTL = 24 * time.Hour
 // It can only publish to: (a) IPFS routing naming.
 //
 
-type mpns struct {
+type mprs struct {
 	resolvers  map[string]rsv.Lookup
 	publishers map[string]Publisher
 }
 
-func NewNameSystem(vstore vs.ValueStore, cachesize int) NameSystem {
+func NewRecordSystem(vstore vs.ValueStore, cachesize int) RecordSystem {
 	factory := rec.NewRecordFactory(vstore)
 	seqm := psh.NewSeqManager(vstore)
 	cachedvs := vs.NewCachedValueStore(vstore, cachesize, nil)
-	return &mpns{
+	return &mprs{
 		resolvers: map[string]rsv.Lookup{
 			"dns":      rsv.NewDNSResolver(),
 			"proquint": new(rsv.ProquintResolver),
@@ -52,15 +53,13 @@ func NewNameSystem(vstore vs.ValueStore, cachesize int) NameSystem {
 	}
 }
 
-const DefaultResolverCacheTTL = time.Minute
-
 // Resolve implements Resolver.
-func (ns *mpns) Resolve(ctx context.Context, name string) (path.Path, error) {
+func (ns *mprs) Resolve(ctx context.Context, name string) (path.Path, error) {
 	return ns.ResolveN(ctx, name, rsv.DefaultDepthLimit)
 }
 
 // ResolveN implements Resolver.
-func (ns *mpns) ResolveN(ctx context.Context, name string, depth int) (path.Path, error) {
+func (ns *mprs) ResolveN(ctx context.Context, name string, depth int) (path.Path, error) {
 	if strings.HasPrefix(name, "/ipfs/") {
 		return path.ParsePath(name)
 	}
@@ -73,7 +72,7 @@ func (ns *mpns) ResolveN(ctx context.Context, name string, depth int) (path.Path
 }
 
 // ResolveOnce implements Lookup.
-func (ns *mpns) ResolveOnce(ctx context.Context, name string) (string, error) {
+func (ns *mprs) ResolveOnce(ctx context.Context, name string) (string, error) {
 	if !strings.HasPrefix(name, "/iprs/") && !strings.HasPrefix(name, "/ipns/") {
 		name = "/iprs/" + name
 	}
@@ -121,6 +120,6 @@ func (ns *mpns) ResolveOnce(ctx context.Context, name string) (string, error) {
 }
 
 // Publish implements Publisher
-func (ns *mpns) Publish(ctx context.Context, iprsKey rsp.IprsPath, record *r.Record) error {
+func (ns *mprs) Publish(ctx context.Context, iprsKey rsp.IprsPath, record *r.Record) error {
 	return ns.publishers["/iprs/"].Publish(ctx, iprsKey, record)
 }

@@ -16,6 +16,7 @@ type CertRecordSigner struct {
 	pk *rsa.PrivateKey
 }
 
+// TODO: Whitelist
 func NewCertRecordSigner(m *c.CertificateManager, cert *x509.Certificate, pk *rsa.PrivateKey) *CertRecordSigner {
 	return &CertRecordSigner{
 		m: m,
@@ -24,16 +25,29 @@ func NewCertRecordSigner(m *c.CertificateManager, cert *x509.Certificate, pk *rs
 	}
 }
 
+func (s *CertRecordSigner) BasePath() (rsp.IprsPath, error) {
+	h, err := c.GetCertificateHash(s.cert)
+	if err != nil {
+		return rsp.NilPath, err
+	}
+	return rsp.FromString("/iprs/" + h)
+}
+
 func (s *CertRecordSigner) VerificationType() *pb.IprsEntry_VerificationType {
 	t := pb.IprsEntry_Cert
 	return &t
 }
 
-func (s *CertRecordSigner) Verification() []byte {
-	return []byte(c.GetCertificateHash(s.cert))
+func (s *CertRecordSigner) Verification() ([]byte, error) {
+	h, err := c.GetCertificateHash(s.cert)
+	if err != nil {
+		return nil, err
+	}
+	return []byte(h), nil
 }
 
 func (s *CertRecordSigner) PublishVerification(ctx context.Context, iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
+	// TODO: Check iprsKey is valid for this type of RecordSigner
 	_, err := s.m.PutCertificate(ctx, s.cert)
 	return err
 }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path"
 	"strings"
-	mh "gx/ipfs/QmU9a9NV9RdPNwZQDYd5uKsm6N6LJLSvLbywDDYFbaaC6P/go-multihash"
+	mh "gx/ipfs/QmYeKnKpubCMRiq3PGZcTREErthbb5Q9cXsCoSkD9bjEBd/go-multihash"
 	u "github.com/ipfs/go-ipfs-util"
 )
 
@@ -108,3 +108,5 @@ func IsValid(txt string) bool {
 	_, err := FromString(txt)
 	return err == nil
 }
+
+var NilPath = IprsPath{""}

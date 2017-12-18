@@ -5,28 +5,28 @@ import (
 	"fmt"
 	"time"
 
-	cid "gx/ipfs/QmNp85zy9RLrQ5oQD4hPyS39ezrrXpcaa7R4Y9kxdWQLLQ/go-cid"
-	lru "gx/ipfs/QmVYxfoJQiZijTgPNHCHgHELvQpbsJNTg6Crmc3dQkj3yy/golang-lru"
-	mh "gx/ipfs/QmU9a9NV9RdPNwZQDYd5uKsm6N6LJLSvLbywDDYFbaaC6P/go-multihash"
-	path "github.com/ipfs/go-ipfs/path"
-	pb "github.com/dirkmc/go-iprs/pb"
-	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
-	rec "github.com/dirkmc/go-iprs/record"
-	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
 	rsp "github.com/dirkmc/go-iprs/path"
+	pb "github.com/dirkmc/go-iprs/pb"
+	rec "github.com/dirkmc/go-iprs/record"
+	path "github.com/ipfs/go-ipfs/path"
+	routing "gx/ipfs/QmPCGUjMRuBcPybZFpjhzpifwPP9wPRoiy5geTQKU4vqWA/go-libp2p-routing"
+	lru "gx/ipfs/QmVYxfoJQiZijTgPNHCHgHELvQpbsJNTg6Crmc3dQkj3yy/golang-lru"
+	mh "gx/ipfs/QmYeKnKpubCMRiq3PGZcTREErthbb5Q9cXsCoSkD9bjEBd/go-multihash"
+	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 )
 
 const DefaultResolverCacheTTL = time.Minute
 
 type CachedValueStore struct {
-	vs routing.ValueStore
+	vs    routing.ValueStore
 	cache *lru.Cache
-	ttl time.Duration
+	ttl   time.Duration
 }
 
 type cacheEntry struct {
 	entry *pb.IprsEntry
-	eol time.Time
+	eol   time.Time
 }
 
 // cachesize is the limit of the number of entries in the lru cache. Setting it
@@ -41,7 +41,7 @@ func NewCachedValueStore(vs routing.ValueStore, cachesize int, ttlp *time.Durati
 		ttl = *ttlp
 	}
 
-	return &CachedValueStore{ vs, cache, ttl }
+	return &CachedValueStore{vs, cache, ttl}
 }
 
 func (s *CachedValueStore) cacheGet(iprsKey rsp.IprsPath) (*pb.IprsEntry, bool) {
@@ -78,17 +78,17 @@ func (s *CachedValueStore) cacheSet(iprsKey rsp.IprsPath, entry *pb.IprsEntry) {
 	if s.cache == nil {
 		return
 	}
-	
+
 	// if completely unspecified, just use one minute
 	ttl := s.ttl
 	/*
-	TODO: Not sure if this is still being used by IPNS
-	if rec.Ttl != nil {
-		recttl := time.Duration(rec.GetTtl())
-		if recttl >= 0 {
-			ttl = recttl
+		TODO: Not sure if this is still being used by IPNS
+		if rec.Ttl != nil {
+			recttl := time.Duration(rec.GetTtl())
+			if recttl >= 0 {
+				ttl = recttl
+			}
 		}
-	}
 	*/
 
 	cacheTill := time.Now().Add(ttl)
@@ -99,7 +99,7 @@ func (s *CachedValueStore) cacheSet(iprsKey rsp.IprsPath, entry *pb.IprsEntry) {
 
 	s.cache.Add(iprsKey.String(), cacheEntry{
 		entry: entry,
-		eol: cacheTill,
+		eol:   cacheTill,
 	})
 }
 

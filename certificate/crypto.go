@@ -3,6 +3,7 @@ package iprs_cert
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -30,24 +31,31 @@ func CheckSignature(cert *x509.Certificate, data, signedData []byte) error {
 	return cert.CheckSignature(x509.SHA256WithRSA, data, signedData)
 }
 
-func GetCertificateHash(cert *x509.Certificate) string {
-	return getCertificateHashFromBytes(MarshalCertificate(cert))
+func GetCertificateHash(cert *x509.Certificate) (string, error) {
+	b, err := MarshalCertificate(cert)
+	if err != nil {
+		return "", fmt.Errorf("Could not marshall certificate: %s", err)
+	}
+	return getCertificateHashFromBytes(b), nil
 }
 
 func getCertificateHashFromBytes(bytes []byte) string {
 	return u.Hash(bytes).B58String()
 }
 
-func MarshalCertificate(cert *x509.Certificate) []byte {
+func MarshalCertificate(cert *x509.Certificate) ([]byte, error) {
 	pemBytes := new(bytes.Buffer)
-	pem.Encode(pemBytes, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
-	return pemBytes.Bytes()
+	err := pem.Encode(pemBytes, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
+	if err != nil {
+		return nil, err
+	}
+	return pemBytes.Bytes(), nil
 }
 
 func UnmarshalCertificate(pemBytes []byte) (*x509.Certificate, error) {
-	block, _ := pem.Decode(pemBytes)
+	block, err := pem.Decode(pemBytes)
 	if block == nil {
-		return nil, errors.New("Could not decode certificate")
+		return nil, fmt.Errorf("Could not decode certificate: %s", err)
 	}
 
 	return x509.ParseCertificate(block.Bytes)

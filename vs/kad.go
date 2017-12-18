@@ -4,23 +4,23 @@ import (
 	"context"
 	"fmt"
 
-	dhtpb "gx/ipfs/QmbxkgUceEcuSZ4ZdBA3x74VUDSSYjHYmmeEqkjxbtZ6Jg/go-libp2p-record/pb"
-	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	dshelp "github.com/ipfs/go-ipfs/thirdparty/ds-help"
 	logging "github.com/ipfs/go-log"
+	routing "gx/ipfs/QmPCGUjMRuBcPybZFpjhzpifwPP9wPRoiy5geTQKU4vqWA/go-libp2p-routing"
 	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
-	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
+	dhtpb "gx/ipfs/QmbxkgUceEcuSZ4ZdBA3x74VUDSSYjHYmmeEqkjxbtZ6Jg/go-libp2p-record/pb"
+	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 )
 
 var log = logging.Logger("iprs.vs")
 
 type KadValueStore struct {
-	ds ds.Datastore
+	ds  ds.Datastore
 	rvs routing.ValueStore
 }
 
 func NewKadValueStore(ds ds.Datastore, routing routing.ValueStore) *KadValueStore {
-	return &KadValueStore{ ds, routing }
+	return &KadValueStore{ds, routing}
 }
 
 func (vs *KadValueStore) PutValue(ctx context.Context, k string, b []byte) error {

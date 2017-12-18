@@ -2,14 +2,14 @@ package iprs_record
 
 import (
 	"context"
-	"time"
-	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
-	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
 	rsp "github.com/dirkmc/go-iprs/path"
 	u "github.com/ipfs/go-ipfs-util"
+	routing "gx/ipfs/QmPCGUjMRuBcPybZFpjhzpifwPP9wPRoiy5geTQKU4vqWA/go-libp2p-routing"
+	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
+	"time"
 )
 
-const PublicKeyPutTimeout = time.Second*10
+const PublicKeyPutTimeout = time.Second * 10
 
 type PublicKeyManager struct {
 	routing routing.ValueStore
@@ -51,4 +51,13 @@ func (m *PublicKeyManager) GetPublicKey(ctx context.Context, iprsKey rsp.IprsPat
 	}
 
 	return pubk, nil
+}
+
+func GetPublicKeyHash(pubk ci.PubKey) (string, error) {
+	pubkBytes, err := pubk.Bytes()
+	if err != nil {
+		return "", err
+	}
+
+	return u.Hash(pubkBytes).B58String(), nil
 }

@@ -4,17 +4,17 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
-	"time"
-	logging "github.com/ipfs/go-log"
-	routing "gx/ipfs/QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm/go-libp2p-routing"
 	u "github.com/ipfs/go-ipfs-util"
+	logging "github.com/ipfs/go-log"
+	routing "gx/ipfs/QmPCGUjMRuBcPybZFpjhzpifwPP9wPRoiy5geTQKU4vqWA/go-libp2p-routing"
+	"time"
 )
 
 const CertType = "cert"
 const certPrefix = "/" + CertType + "/"
 const certPrefixLen = len(certPrefix)
-const CertFetchTimeout = time.Second*10
-const CertPutTimeout = time.Second*10
+const CertFetchTimeout = time.Second * 10
+const CertPutTimeout = time.Second * 10
 
 var log = logging.Logger("iprs.cert")
 
@@ -33,9 +33,13 @@ func getCertPath(certHash string) string {
 }
 
 func (m *CertificateManager) PutCertificate(ctx context.Context, cert *x509.Certificate) (string, error) {
-	pemBytes := MarshalCertificate(cert)
+	pemBytes, err := MarshalCertificate(cert)
+	if err != nil {
+		log.Warningf("Failed to marshall certificate: %s", err)
+		return "", err
+	}
+	
 	certHash := getCertificateHashFromBytes(pemBytes)
-
 	certKey := getCertPath(certHash)
 	log.Debugf("Putting certificate at %s", certKey)
 

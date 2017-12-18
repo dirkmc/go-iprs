@@ -1,20 +1,20 @@
 package iprs_record
 
 import (
+	"context"
 	"testing"
 	"time"
-	"context"
 
+	rsp "github.com/dirkmc/go-iprs/path"
+	pb "github.com/dirkmc/go-iprs/pb"
+	u "github.com/ipfs/go-ipfs-util"
+	path "github.com/ipfs/go-ipfs/path"
+	mockrouting "github.com/ipfs/go-ipfs/routing/mock"
+	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
 	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
-	mockrouting "github.com/ipfs/go-ipfs/routing/mock"
-	path "github.com/ipfs/go-ipfs/path"
-	pb "github.com/dirkmc/go-iprs/pb"
-	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
-	rsp "github.com/dirkmc/go-iprs/path"
-	testutil "gx/ipfs/QmQgLZP9haZheimMHqqAjJh2LhRmNfEoZDfbtkpeMhi9xK/go-testutil"
-	u "github.com/ipfs/go-ipfs-util"
+	testutil "gx/ipfs/QmeDA8gNhvRTsbrjEieay5wezupJDiky8xvCzDABbsGzmp/go-testutil"
 	// gologging "github.com/whyrusleeping/go-logging"
 	// logging "github.com/ipfs/go-log"
 )
@@ -27,7 +27,7 @@ func TestKeyRecordVerification(t *testing.T) {
 	verifier := NewKeyRecordVerifier(pubkManager)
 
 	// Simplifies creating a record and publishing it to routing
-	NewRecord := func() (func(rsp.IprsPath, ci.PrivKey, uint64, time.Time) *pb.IprsEntry) {
+	NewRecord := func() func(rsp.IprsPath, ci.PrivKey, uint64, time.Time) *pb.IprsEntry {
 		return func(iprsKey rsp.IprsPath, pk ci.PrivKey, seq uint64, eol time.Time) *pb.IprsEntry {
 			vl := NewEolRecordValidity(eol)
 			s := NewKeyRecordSigner(pubkManager, pk)

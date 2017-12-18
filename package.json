@@ -7,20 +7,14 @@
   "gxDependencies": [
     {
       "author": "whyrusleeping",
-      "hash": "QmNp85zy9RLrQ5oQD4hPyS39ezrrXpcaa7R4Y9kxdWQLLQ",
-      "name": "go-cid",
-      "version": "0.7.18"
-    },
-    {
-      "author": "whyrusleeping",
       "hash": "QmPN7cwmpcc4DWXb4KTB9dNAJgjuPY69h3npsMfhRrQL9c",
       "name": "go-ipld-format",
       "version": "0.5.1"
     },
     {
-      "hash": "QmPR2JzfKd9poHx9XBhzoFeBBC31ZM3W5iUPKJZWyaoZZm",
+      "hash": "QmPCGUjMRuBcPybZFpjhzpifwPP9wPRoiy5geTQKU4vqWA",
       "name": "go-libp2p-routing",
-      "version": "2.2.18"
+      "version": "2.2.19"
     },
     {
       "author": "whyrusleeping",
@@ -30,9 +24,9 @@
     },
     {
       "author": "whyrusleeping",
-      "hash": "QmQgLZP9haZheimMHqqAjJh2LhRmNfEoZDfbtkpeMhi9xK",
+      "hash": "QmeDA8gNhvRTsbrjEieay5wezupJDiky8xvCzDABbsGzmp",
       "name": "go-testutil",
-      "version": "1.1.12"
+      "version": "1.1.13"
     },
     {
       "author": "whyrusleeping",
@@ -80,12 +74,6 @@
       "hash": "QmTzs3Gp2rU3HuNayjBVG7qBgbaKWE8bgtwJ7faRxAe9UP",
       "name": "go-libp2p",
       "version": "5.0.7"
-    },
-    {
-      "author": "multiformats",
-      "hash": "QmU9a9NV9RdPNwZQDYd5uKsm6N6LJLSvLbywDDYFbaaC6P",
-      "name": "go-multihash",
-      "version": "1.0.5"
     },
     {
       "author": "whyrusleeping",
@@ -179,6 +167,16 @@
       "hash": "QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5",
       "name": "go-datastore",
       "version": "1.4.0"
+    },
+    {
+      "hash": "QmYeKnKpubCMRiq3PGZcTREErthbb5Q9cXsCoSkD9bjEBd",
+      "name": "go-multihash",
+      "version": "1.0.6"
+    },
+    {
+      "hash": "QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg",
+      "name": "go-cid",
+      "version": "0.7.19"
     }
   ],
   "gxVersion": "0.12.1",
