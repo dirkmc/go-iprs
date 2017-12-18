@@ -61,7 +61,7 @@ func mockResolverTwo() *mockResolver {
 func TestNamesysResolution(t *testing.T) {
 	//	logging.SetAllLoggers(gologging.DEBUG)
 
-	r := &mpns{
+	r := &mprs{
 		resolvers: map[string]rsv.Lookup{
 			"dht": mockResolverOne(),
 			"dns": mockResolverTwo(),

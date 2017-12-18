@@ -168,7 +168,10 @@ func TestCertRecordVerification(t *testing.T) {
 }
 
 func getIprsPathFromCert(t *testing.T, cert *x509.Certificate, relativePath string) rsp.IprsPath {
-	certHash := c.GetCertificateHash(cert)
+	certHash, err := c.GetCertificateHash(cert)
+	if err != nil {
+		t.Fatal(err)
+	}
 	iprsKeyStr := "/iprs/" + certHash + relativePath
 	iprsKey, err := rsp.FromString(iprsKeyStr)
 	if err != nil {
