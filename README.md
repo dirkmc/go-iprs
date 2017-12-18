@@ -3,25 +3,13 @@ go-iprs
 
 ![](https://img.shields.io/badge/status-WIP-red.svg?style=flat-square)
 
-> Go implementation of [IPRS spec](https://github.com/ipfs/specs/tree/master/iprs)
+> Go implementation of [IPRS spec](https://github.com/ipfs/specs/tree/master/iprs). Note: This module is a work in progress
 
 ## Table of Contents
 
-- [Status](#status)
 - [Install](#install)
 - [Usage](#usage)
 - [License](#license)
-
-## Status
-
-Note: This module is a work in progress
-
-During this process, you can check more about the state of this project on:
-
-- [issues](https://github.com/dirkmc/go-iprs/issues)
-- [libp2p specs](https://github.com/libp2p/specs)
-- [IPRS spec](https://github.com/ipfs/specs/tree/master/iprs)
-
 
 ## Install
 
@@ -35,25 +23,93 @@ Note that `go-iprs` is packaged with Gx, so it is recommended to use Gx to insta
 
 ## Usage
 
-IPRS Records are created with a `RecordValidity` and a `RecordSigner`. `RecordValidity` indicates under what conditions the record is considered valid, for example before a certain date (EOL) or between certain dates (TimeRange). `RecordSigner` adds verification data to a record, by signing it, eg with a private key, or with an x509 certificate. A factory is provided that helps construct these records from the `RecordValidity` and `RecordSigner`, with some methods for constructing common combinations (eg a record with an EOL that is signed with a private key)
+IPRS Records are created with a [RecordValidity](https://github.com/dirkmc/go-iprs/blob/master/record/record.go#L20) and a [RecordSigner](https://github.com/dirkmc/go-iprs/blob/master/record/record.go#L33). `RecordValidity` indicates under what conditions the record is considered valid, for example before a certain date ([EOL](https://github.com/dirkmc/go-iprs/blob/master/record/eol.go)) or between certain dates ([TimeRange](https://github.com/dirkmc/go-iprs/blob/master/record/range.go)). `RecordSigner` adds verification data to a record, by signing it, eg with a [private key](https://github.com/dirkmc/go-iprs/blob/master/record/key.go), or with an [x509 certificate](https://github.com/dirkmc/go-iprs/blob/master/record/cert.go). A [factory](https://github.com/dirkmc/go-iprs/blob/master/record/factory.go) is provided that helps construct these records from the `RecordValidity` and `RecordSigner`, with some methods for constructing common combinations (eg a record with an EOL that is signed with a private key)
 
 ### Examples
+
+Records created with the [KeyRecordSigner](https://github.com/dirkmc/go-iprs/blob/master/record/key.go) have a `BasePath()` at `/iprs/<key hash>`
 
 #### Creating an EOL record signed with a private key
 
 ```go
 privateKey := GenerateAPrivateKey()
 valueStore := CreateAValueStore()
-ns := NewNameSystem(valueStore, 20)
+rs := NewRecordSystem(valueStore, 20)
 
 // Create the record
 f := NewRecordFactory(valueStore)
-p := iprspath.IprsPath("/iprs/" + u.Hash(privateKey))
 eol := time.Now().Add(time.Hour)
 record = f.NewEolKeyRecord(path.Path("/ipfs/myIpfsHash"), privateKey, eol)
 
 // Publish the record
-err := ns.Publish(ctx, p, record)
+iprsKey, err := record.BasePath() // /iprs/<key hash>
+if err != nil {
+	fmt.Println(err)
+}
+err = rs.Publish(ctx, iprsKey, record)
+if err != nil {
+	fmt.Println(err)
+}
+```
+
+#### Creating a TimeRange record signed with a private key
+
+```go
+privateKey := GenerateAPrivateKey()
+valueStore := CreateAValueStore()
+rs := NewRecordSystem(valueStore, 20)
+
+// Create the record
+f := NewRecordFactory(valueStore)
+var BeginningOfTime *time.Time
+var EndOfTime *time.Time
+start := BeginningOfTime
+end := time.Now().Add(time.Hour)
+record = f.NewRangeKeyRecord(path.Path("/ipfs/myIpfsHash"), privateKey, start, end)
+
+// Publish the record
+iprsKey, err := record.BasePath() // /iprs/<key hash>
+if err != nil {
+	fmt.Println(err)
+}
+err = rs.Publish(ctx, iprsKey, record)
+if err != nil {
+	fmt.Println(err)
+}
+```
+
+Records created with the [CertRecordSigner](https://github.com/dirkmc/go-iprs/blob/master/record/cert.go) have a `BasePath()` at `/iprs/<ca cert key hash>` and can append an arbitrary sub path onto the end of it, eg `/iprs/<ca cert key hash>/mypath/mystuff`. The CA Certificate can then issue a child certificate that can be used to create a record under the CA Certificate's path. This provides a way to share IPRS path ownership between different users. For example Alice creates a CA Certificate and publishes a record at `/iprs/<alice ca cert hash>/alice/repos/cool/project`. She then issues a child certificate to Bob. Bob can now publish a new record to the same IPRS key.
+
+#### Creating an EOL record signed with a CA certificate key
+
+```go
+caCert, caPk := GenerateCACertificate()
+childCert, childPk := GenerateChildCertificate(caCert, caPk)
+valueStore := CreateAValueStore()
+rs := NewRecordSystem(valueStore, 20)
+
+// Create the record with the CA certificate
+f := NewRecordFactory(valueStore)
+eol := time.Now().Add(time.Hour)
+record = f.NewEolCertRecord(path.Path("/ipfs/myIpfsHash"), caCert, caPk, eol)
+
+// Publish the record
+iprsKey, err := record.BasePath() + "/mypath/mystuff" // /iprs/<key hash>/mypath/mystuff
+if err != nil {
+	fmt.Println(err)
+}
+err = rs.Publish(ctx, iprsKey, record)
+if err != nil {
+	fmt.Println(err)
+}
+
+// Create a record with the child certificate
+eol := time.Now().Add(time.Hour)
+record2 = f.NewEolCertRecord(path.Path("/ipfs/myIpfsHash"), childCert, childPk, eol)
+
+// Publish the record to the same IPRS path
+// /iprs/<key hash>/mypath/mystuff
+err = rs.Publish(ctx, iprsKey, record2)
 if err != nil {
 	fmt.Println(err)
 }
@@ -64,12 +120,16 @@ if err != nil {
 ```go
 iprsPath := GetIprsPath()
 valueStore := CreateAValueStore()
-ns := NewNameSystem(valueStore, 20)
-val, err := ns.resolve(ctx, iprsPath)
+rs := NewRecordSystem(valueStore, 20)
+val, err := rs.resolve(ctx, iprsPath)
 if err == nil {
 	fmt.Println(val)
 }
 ```
+
+### Validators
+
+IPRS provides a validator and selector for the `/iprs/` path at [validation.RecordChecker](https://github.com/dirkmc/go-iprs/blob/master/validation/validation.go). There is also a validator and selector for x509 certificates under the `/cert/` path at [certificate.ValidateCertificateRecord](https://github.com/dirkmc/go-iprs/blob/master/certificate/validator.go) and [certificate.CertificateSelector](https://github.com/dirkmc/go-iprs/blob/master/certificate/validator.go)
 
 ### Using Gx and Gx-go
 
