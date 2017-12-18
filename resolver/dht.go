@@ -2,6 +2,7 @@ package iprs_resolver
 
 import (
 	"context"
+	"strings"
 
 	rsp "github.com/dirkmc/go-iprs/path"
 	rec "github.com/dirkmc/go-iprs/record"
@@ -38,7 +39,10 @@ func (r *DHTResolver) ResolveN(ctx context.Context, name string, depth int) (pat
 // ResolveOnce implements Lookup. Uses the IPFS routing system to
 // resolve SFS-like names.
 func (r *DHTResolver) ResolveOnce(ctx context.Context, name string) (string, error) {
-	log.Debugf("RoutingResolve: '%s'", name)
+	log.Debugf("DHT ResolveOnce: [%s]", name)
+
+	// Ensure name starts with /iprs/
+	name = "/iprs/" + strings.TrimPrefix(name, "/iprs/")
 
 	// Convert string to an IprsPath
 	iprsKey, err := rsp.FromString(name)

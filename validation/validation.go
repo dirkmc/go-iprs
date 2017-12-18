@@ -7,7 +7,7 @@ import (
 	pb "github.com/dirkmc/go-iprs/pb"
 	rec "github.com/dirkmc/go-iprs/record"
 	proto "github.com/gogo/protobuf/proto"
-	record "github.com/libp2p/go-libp2p-record"
+	record "gx/ipfs/QmWGtsyPYEoiqTtWLpeUA2jpW4YSZgarKDD2zivYAFz7sR/go-libp2p-record"
 	logging "github.com/ipfs/go-log"
 )
 

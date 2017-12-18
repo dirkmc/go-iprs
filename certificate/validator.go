@@ -5,7 +5,7 @@ import (
 	"errors"
 	mh "github.com/multiformats/go-multihash"
 	u "github.com/ipfs/go-ipfs-util"
-	record "github.com/libp2p/go-libp2p-record"
+	record "gx/ipfs/QmWGtsyPYEoiqTtWLpeUA2jpW4YSZgarKDD2zivYAFz7sR/go-libp2p-record"
 )
 
 // ValidateCertificateRecord implements ValidatorFunc and

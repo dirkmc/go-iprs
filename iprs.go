@@ -73,6 +73,8 @@ func (ns *mprs) ResolveN(ctx context.Context, name string, depth int) (path.Path
 
 // ResolveOnce implements Lookup.
 func (ns *mprs) ResolveOnce(ctx context.Context, name string) (string, error) {
+	log.Debugf("RecordSystem ResolveOnce %s", name)
+
 	if !strings.HasPrefix(name, "/iprs/") && !strings.HasPrefix(name, "/ipns/") {
 		name = "/iprs/" + name
 	}
@@ -109,13 +111,16 @@ func (ns *mprs) ResolveOnce(ctx context.Context, name string) (string, error) {
 
 	_, err := mh.FromB58String(key)
 	if err == nil {
+		log.Debugf("RecordSystem.ResolveOnce DHT resolve %s", key)
 		return resolveOnce("dht", key)
 	}
 
 	if isd.IsDomain(key) {
+		log.Debugf("RecordSystem.ResolveOnce DNS resolve %s", key)
 		return resolveOnce("dns", key)
 	}
 
+	log.Debugf("RecordSystem.ResolveOnce proquint resolve %s", key)
 	return resolveOnce("proquint", key)
 }
 
