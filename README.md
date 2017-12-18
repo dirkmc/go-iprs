@@ -61,11 +61,11 @@ rs := NewRecordSystem(valueStore, 20)
 
 // Create the record
 f := NewRecordFactory(valueStore)
-var BeginningOfTime *time.Time
-var EndOfTime *time.Time
+var BeginningOfTime *time.Time // nil indicates the beginning of time (ie, no start date)
+var EndOfTime *time.Time       // nil indicates the end of time (ie, no expiration)
 start := BeginningOfTime
 end := time.Now().Add(time.Hour)
-record = f.NewRangeKeyRecord(path.Path("/ipfs/myIpfsHash"), privateKey, start, end)
+record = f.NewRangeKeyRecord(path.Path("/ipfs/myIpfsHash"), privateKey, start, &end)
 
 // Publish the record
 iprsKey, err := record.BasePath() // /iprs/<key hash>
@@ -91,10 +91,11 @@ rs := NewRecordSystem(valueStore, 20)
 // Create the record with the CA certificate
 f := NewRecordFactory(valueStore)
 eol := time.Now().Add(time.Hour)
-record = f.NewEolCertRecord(path.Path("/ipfs/myIpfsHash"), caCert, caPk, eol)
+// Value is IPFS path of Alice's commit
+record = f.NewEolCertRecord(path.Path("/ipfs/ipfsHashOfAlicesCommit"), caCert, caPk, eol)
 
 // Publish the record
-iprsKey, err := record.BasePath() + "/mypath/mystuff" // /iprs/<key hash>/mypath/mystuff
+iprsKey, err := record.BasePath() + "/alice/repos/cool/project" // /iprs/<key hash>/alice/repos/cool/project
 if err != nil {
 	fmt.Println(err)
 }
@@ -105,10 +106,11 @@ if err != nil {
 
 // Create a record with the child certificate
 eol := time.Now().Add(time.Hour)
-record2 = f.NewEolCertRecord(path.Path("/ipfs/myIpfsHash"), childCert, childPk, eol)
+// Value is IPFS path of Bob's commit
+record2 = f.NewEolCertRecord(path.Path("/ipfs/ipfsHashOfBobsCommit"), childCert, childPk, eol)
 
 // Publish the record to the same IPRS path
-// /iprs/<key hash>/mypath/mystuff
+// /iprs/<key hash>/alice/repos/cool/project
 err = rs.Publish(ctx, iprsKey, record2)
 if err != nil {
 	fmt.Println(err)
@@ -129,7 +131,7 @@ if err == nil {
 
 ### Validators
 
-IPRS provides a validator and selector for the `/iprs/` path at [validation.RecordChecker](https://github.com/dirkmc/go-iprs/blob/master/validation/validation.go). There is also a validator and selector for x509 certificates under the `/cert/` path at [certificate.ValidateCertificateRecord](https://github.com/dirkmc/go-iprs/blob/master/certificate/validator.go) and [certificate.CertificateSelector](https://github.com/dirkmc/go-iprs/blob/master/certificate/validator.go)
+IPRS provides a validator and selector for the `/iprs/` path at [validation.RecordChecker](https://github.com/dirkmc/go-iprs/blob/master/validation/validation.go). There is also a validator and selector for the `/cert/` path (for x509 certificates) at [certificate.ValidateCertificateRecord](https://github.com/dirkmc/go-iprs/blob/master/certificate/validator.go) and [certificate.CertificateSelector](https://github.com/dirkmc/go-iprs/blob/master/certificate/validator.go)
 
 ### Using Gx and Gx-go
 
