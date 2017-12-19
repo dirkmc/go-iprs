@@ -18,8 +18,9 @@ func TestPathParsing(t *testing.T) {
 		"/iprs/badhash/": false,
 		"/iprs/badhash/a": false,
 		"/ipns/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n": true,
-		"/ipns/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n/a": true,
-		"/ipns/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n/a/b/c/d/e/f": true,
+		// ipns paths must be just a key (nothing further after the hash)
+		"/ipns/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n/a": false,
+		"/ipns/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n/a/b/c/d/e/f": false,
 		"/ipns/": false,
 		"ipns/":  false,
 		"ipns/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n": false,
@@ -47,6 +48,7 @@ func TestIsJustAKey(t *testing.T) {
 		"/iprs/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n": true,
 		"/iprs/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n/a": false,
 		"/iprs/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n/a/b": false,
+		"/ipns/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n": true,
 	}
 
 	for p, expected := range cases {
@@ -57,6 +59,26 @@ func TestIsJustAKey(t *testing.T) {
 		result := path.IsJustAKey()
 		if result != expected {
 			t.Fatalf("expected IsJustAKey(%s) to return %v, not %v", p, expected, result)
+		}
+	}
+}
+
+func TestIsIpns(t *testing.T) {
+	cases := map[string]bool{
+		"/iprs/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n": false,
+		"/iprs/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n/a": false,
+		"/iprs/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n/a/b": false,
+		"/ipns/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n": true,
+	}
+
+	for p, expected := range cases {
+		path, err := FromString(p)
+		if err != nil {
+			t.Fatalf("FromString failed to parse \"%s\", but should have succeeded", p)
+		}
+		result := path.IsIpns()
+		if result != expected {
+			t.Fatalf("expected IsIpns(%s) to return %v, not %v", p, expected, result)
 		}
 	}
 }

@@ -8,7 +8,6 @@ import (
 	rsp "github.com/dirkmc/go-iprs/path"
 	psh "github.com/dirkmc/go-iprs/publisher"
 	r "github.com/dirkmc/go-iprs/record"
-	rec "github.com/dirkmc/go-iprs/record"
 	rsv "github.com/dirkmc/go-iprs/resolver"
 	vs "github.com/dirkmc/go-iprs/vs"
 	path "github.com/ipfs/go-ipfs/path"
@@ -38,14 +37,13 @@ type mprs struct {
 }
 
 func NewRecordSystem(vstore vs.ValueStore, cachesize int) RecordSystem {
-	factory := rec.NewRecordFactory(vstore)
 	seqm := psh.NewSeqManager(vstore)
 	cachedvs := vs.NewCachedValueStore(vstore, cachesize, nil)
 	return &mprs{
 		resolvers: map[string]rsv.Lookup{
 			"dns":      rsv.NewDNSResolver(),
 			"proquint": new(rsv.ProquintResolver),
-			"dht":      rsv.NewDHTResolver(cachedvs, factory),
+			"dht":      rsv.NewDHTResolver(cachedvs),
 		},
 		publishers: map[string]Publisher{
 			"/iprs/": psh.NewDHTPublisher(seqm),
@@ -64,11 +62,12 @@ func (ns *mprs) ResolveN(ctx context.Context, name string, depth int) (path.Path
 		return path.ParsePath(name)
 	}
 
+	// Assume a bare hash is an IPFS path
 	if !strings.HasPrefix(name, "/") {
 		return path.ParsePath("/ipfs/" + name)
 	}
 
-	return rsv.Resolve(ctx, ns, name, depth, "/iprs/", "/ipns/")
+	return rsv.Resolve(ctx, ns, name, depth)
 }
 
 // ResolveOnce implements Lookup.
@@ -112,7 +111,7 @@ func (ns *mprs) ResolveOnce(ctx context.Context, name string) (string, error) {
 	_, err := mh.FromB58String(key)
 	if err == nil {
 		log.Debugf("RecordSystem.ResolveOnce DHT resolve %s", key)
-		return resolveOnce("dht", key)
+		return resolveOnce("dht", name)
 	}
 
 	if isd.IsDomain(key) {

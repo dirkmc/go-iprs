@@ -5,6 +5,7 @@ import (
 
 	c "github.com/dirkmc/go-iprs/certificate"
 	v "github.com/dirkmc/go-iprs/validation"
+	ipns "github.com/ipfs/go-ipfs/namesys"
 	mockrouting "github.com/ipfs/go-ipfs/routing/mock"
 	record "gx/ipfs/QmWGtsyPYEoiqTtWLpeUA2jpW4YSZgarKDD2zivYAFz7sR/go-libp2p-record"
 	recordpb "gx/ipfs/QmWGtsyPYEoiqTtWLpeUA2jpW4YSZgarKDD2zivYAFz7sR/go-libp2p-record/pb"
@@ -43,6 +44,9 @@ func NewMockValueStore(ctx context.Context, id testutil.Identity, dstore ds.Data
 
 	vs.Validator["iprs"] = v.RecordChecker.ValidChecker
 	vs.Selector["iprs"] = v.RecordChecker.Selector
+
+	vs.Validator["ipns"] = ipns.IpnsRecordValidator
+	vs.Selector["ipns"] = ipns.IpnsSelectorFunc
 
 	return vs
 }

@@ -54,7 +54,13 @@ func (p IprsPath) Pretty() string {
 // IsJustAKey returns true if the path is of the form /iprs/<key>
 func (p IprsPath) IsJustAKey() bool {
 	parts := p.Segments()
-	return (len(parts) == 2 && parts[0] == "iprs")
+	return len(parts) == 2 && (parts[0] == "iprs" || parts[0] == "ipns")
+}
+
+// IsIpns returns true if the path is of the form /ipns/...
+func (p IprsPath) IsIpns() bool {
+	parts := p.Segments()
+	return len(parts) == 2 && parts[0] == "ipns"
 }
 
 func FromString(txt string) (IprsPath, error) {
@@ -69,6 +75,10 @@ func FromString(txt string) (IprsPath, error) {
 
 	if parts[2] == "" || !u.IsValidHash(parts[2]) {
 		return IprsPath{""}, fmt.Errorf("Bad IPRS Path hash [%s] in [%s]", parts[2], txt)
+	}
+
+	if parts[1] == "ipns" && len(parts) > 3 {
+		return IprsPath{""}, fmt.Errorf("Bad IPRS Path [%s] IPNS path cannot have anything after the hash", txt)
 	}
 
 	return IprsPath{txt}, nil

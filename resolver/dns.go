@@ -38,7 +38,7 @@ func (r *DNSResolver) Resolve(ctx context.Context, name string) (path.Path, erro
 
 // ResolveN implements Resolver.
 func (r *DNSResolver) ResolveN(ctx context.Context, name string, depth int) (path.Path, error) {
-	return Resolve(ctx, r, name, depth, "/iprs/", "/ipns/")
+	return Resolve(ctx, r, name, depth)
 }
 
 type lookupRes struct {
@@ -50,6 +50,7 @@ type lookupRes struct {
 // TXT records for a given domain name should contain a b58
 // encoded multihash.
 func (r *DNSResolver) ResolveOnce(ctx context.Context, name string) (string, error) {
+	name = removePathPrefix(name)
 	segments := strings.SplitN(name, "/", 2)
 	domain := segments[0]
 

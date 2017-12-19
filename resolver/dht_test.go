@@ -27,7 +27,7 @@ func TestDHTResolve(t *testing.T) {
 	factory := rec.NewRecordFactory(r)
 	vstore := vs.NewCachedValueStore(r, 0, nil)
 	kvstore := vs.NewKadValueStore(dstore, r)
-	resolver := NewDHTResolver(vstore, factory)
+	resolver := NewDHTResolver(vstore)
 	publisher := psh.NewDHTPublisher(psh.NewSeqManager(kvstore))
 
 	pk, pubk, err := testutil.RandTestKeyPair(512)

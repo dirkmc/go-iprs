@@ -36,8 +36,10 @@ type Lookup interface {
 	ResolveOnce(ctx context.Context, name string) (value string, err error)
 }
 
+var prefixes = []string{ "/iprs/", "/ipns/" }
+
 // Resolve is a helper for implementing Resolver.ResolveN using resolveOnce.
-func Resolve(ctx context.Context, r Lookup, name string, depth int, prefixes ...string) (path.Path, error) {
+func Resolve(ctx context.Context, r Lookup, name string, depth int) (path.Path, error) {
 	for {
 		// Lookup the path in the resolver
 		p, err := r.ResolveOnce(ctx, name)
@@ -61,19 +63,19 @@ func Resolve(ctx context.Context, r Lookup, name string, depth int, prefixes ...
 			return pth, ErrResolveRecursion
 		}
 
-		// If the path has a recognized prefix, remove it
-		// and resolve the rest of the path
-		// eg /ipns/www.example.com => www.example.com
+		// If the path has a recognized prefix, resolve it
+		// eg /ipns/www.example.com
 		matched := false
 		for _, prefix := range prefixes {
 			if strings.HasPrefix(p, prefix) {
 				matched = true
-				name = strings.TrimPrefix(p, prefix)
+				//name = strings.TrimPrefix(p, prefix)
+				name = p
 				break
 			}
 		}
 
-		// There were no recognzed prefixes, so just return the path itself
+		// There were no recognized prefixes, so just return the path itself
 		if !matched {
 			return parsePath(p)
 		}
@@ -83,6 +85,13 @@ func Resolve(ctx context.Context, r Lookup, name string, depth int, prefixes ...
 			depth--
 		}
 	}
+}
+
+func removePathPrefix(val string) string {
+	for _, prefix := range prefixes {
+		val = strings.TrimPrefix(val, prefix)
+	}
+	return val
 }
 
 func parsePath(val string) (path.Path, error) {

@@ -1,39 +1,30 @@
 package iprs_vs
 
 import (
-	"bytes"
 	"context"
 	"testing"
 	"time"
 
 	rsp "github.com/dirkmc/go-iprs/path"
 	rec "github.com/dirkmc/go-iprs/record"
-	u "github.com/ipfs/go-ipfs-util"
 	path "github.com/ipfs/go-ipfs/path"
-	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
 	testutil "gx/ipfs/QmeDA8gNhvRTsbrjEieay5wezupJDiky8xvCzDABbsGzmp/go-testutil"
 )
 
-func getEolRecord(t *testing.T, ts time.Time, r ValueStore) (rsp.IprsPath, *rec.Record) {
-	pk, pubk, err := testutil.RandTestKeyPair(512)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	p := path.FromString("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
-
-	pubkBytes, err := pubk.Bytes()
-	if err != nil {
-		t.Fatal(err)
-	}
-	iprsKey, err := rsp.FromString("/iprs/" + u.Hash(pubkBytes).B58String())
+func getEolRecord(t *testing.T, p path.Path, ts time.Time, r ValueStore) (rsp.IprsPath, *rec.Record) {
+	pk, _, err := testutil.RandTestKeyPair(512)
 	if err != nil {
 		t.Fatal(err)
 	}
 	factory := rec.NewRecordFactory(r)
-	return iprsKey, factory.NewEolKeyRecord(p, pk, ts)
+	eolRecord := factory.NewEolKeyRecord(p, pk, ts)
+	iprsKey, err := eolRecord.BasePath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return iprsKey, eolRecord
 }
 
 func TestCacheSizeZero(t *testing.T) {
@@ -41,35 +32,34 @@ func TestCacheSizeZero(t *testing.T) {
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
 	r := NewMockValueStore(context.Background(), id, dstore)
-	vstore := NewCachedValueStore(r, 0, nil)
 	ts := time.Now().Add(time.Hour)
-	iprsKey, eolRecord := getEolRecord(t, ts, r)
+	p := path.FromString("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
+	iprsKey, eolRecord := getEolRecord(t, p, ts, r)
 
-	// Put the entry
-	e, err := eolRecord.Entry(1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = vstore.PutEntry(ctx, iprsKey, e)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ebytes, err := proto.Marshal(e)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// Publish record
+	eolRecord.Publish(ctx, iprsKey, 1)
 
-	// Get the entry
-	res, err := vstore.GetEntry(ctx, iprsKey)
+	// Get the entry value (cache is size zero so it will be retrieved from routing)
+	vstore := NewCachedValueStore(r, 0, nil)
+	res, err := vstore.GetValue(ctx, iprsKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	resb, err := proto.Marshal(res)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if bytes.Compare(resb, ebytes) != 0 {
+	if string(res) != string(p) {
 		t.Fatal("Got back incorrect value")
+	}
+
+	// Remove entry from routing. Cache is size zero so retrieving
+	// it should fail
+	err = r.DeleteValue(iprsKey.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Get the entry value again
+	res, err = vstore.GetValue(ctx, iprsKey)
+	if err == nil {
+		t.Fatal("Expected key not found error")
 	}
 }
 
@@ -80,32 +70,18 @@ func TestCacheSizeTen(t *testing.T) {
 	r := NewMockValueStore(context.Background(), id, dstore)
 	vstore := NewCachedValueStore(r, 10, nil)
 	ts := time.Now().Add(time.Hour)
-	iprsKey, eolRecord := getEolRecord(t, ts, r)
+	p := path.FromString("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
+	iprsKey, eolRecord := getEolRecord(t, p, ts, r)
 
-	// Put the entry
-	e, err := eolRecord.Entry(1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = vstore.PutEntry(ctx, iprsKey, e)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ebytes, err := proto.Marshal(e)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// Publish record
+	eolRecord.Publish(ctx, iprsKey, 1)
 
-	// Get the entry
-	res, err := vstore.GetEntry(ctx, iprsKey)
+	// Get the entry value
+	res, err := vstore.GetValue(ctx, iprsKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	resb, err := proto.Marshal(res)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if bytes.Compare(resb, ebytes) != 0 {
+	if string(res) != string(p) {
 		t.Fatal("Got back incorrect value")
 	}
 
@@ -115,16 +91,12 @@ func TestCacheSizeTen(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Get the entry again
-	res, err = vstore.GetEntry(ctx, iprsKey)
+	// Get the entry value again
+	res, err = vstore.GetValue(ctx, iprsKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	resb, err = proto.Marshal(res)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if bytes.Compare(resb, ebytes) != 0 {
+	if string(res) != string(p) {
 		t.Fatal("Got back incorrect value")
 	}
 }
@@ -136,32 +108,18 @@ func TestCacheEolExpired(t *testing.T) {
 	r := NewMockValueStore(context.Background(), id, dstore)
 	vstore := NewCachedValueStore(r, 10, nil)
 	ts := time.Now().Add(time.Millisecond * 100)
-	iprsKey, eolRecord := getEolRecord(t, ts, r)
+ 	p := path.FromString("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
+	iprsKey, eolRecord := getEolRecord(t, p, ts, r)
 
-	// Put the entry
-	e, err := eolRecord.Entry(1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = vstore.PutEntry(ctx, iprsKey, e)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ebytes, err := proto.Marshal(e)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// Publish record
+	eolRecord.Publish(ctx, iprsKey, 1)
 
-	// Get the entry
-	res, err := vstore.GetEntry(ctx, iprsKey)
+	// Get the entry value
+	res, err := vstore.GetValue(ctx, iprsKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	resb, err := proto.Marshal(res)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if bytes.Compare(resb, ebytes) != 0 {
+	if string(res) != string(p) {
 		t.Fatal("Got back incorrect value")
 	}
 
@@ -174,8 +132,8 @@ func TestCacheEolExpired(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Get the entry again. Should have expired
-	res, err = vstore.GetEntry(ctx, iprsKey)
+	// Get the entry value again. Should have expired
+	res, err = vstore.GetValue(ctx, iprsKey)
 	if err == nil {
 		t.Fatal("Expected key not found error")
 	}
@@ -189,51 +147,32 @@ func TestCacheTimeRangeExpired(t *testing.T) {
 	factory := rec.NewRecordFactory(r)
 	vstore := NewCachedValueStore(r, 10, nil)
 
-	pk, pubk, err := testutil.RandTestKeyPair(512)
+	pk, _, err := testutil.RandTestKeyPair(512)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	p := path.FromString("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
 	ts := time.Now()
-	pubkBytes, err := pubk.Bytes()
-	if err != nil {
-		t.Fatal(err)
-	}
-	iprsKey, err := rsp.FromString("/iprs/" + u.Hash(pubkBytes).B58String())
-	if err != nil {
-		t.Fatal(err)
-	}
 	InTenMillis := ts.Add(time.Millisecond * 100)
 	rangeRecord, err := factory.NewRangeKeyRecord(p, pk, nil, &InTenMillis)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	// Put the entry
-	e, err := rangeRecord.Entry(1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = vstore.PutEntry(ctx, iprsKey, e)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ebytes, err := proto.Marshal(e)
+	iprsKey, err := rangeRecord.BasePath()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Get the entry
-	res, err := vstore.GetEntry(ctx, iprsKey)
+	// Publish record
+	rangeRecord.Publish(ctx, iprsKey, 1)
+
+	// Get the entry value
+	res, err := vstore.GetValue(ctx, iprsKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	resb, err := proto.Marshal(res)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if bytes.Compare(resb, ebytes) != 0 {
+	if string(res) != string(p) {
 		t.Fatal("Got back incorrect value")
 	}
 
@@ -247,7 +186,7 @@ func TestCacheTimeRangeExpired(t *testing.T) {
 	}
 
 	// Get the entry again. Should have expired
-	res, err = vstore.GetEntry(ctx, iprsKey)
+	res, err = vstore.GetValue(ctx, iprsKey)
 	if err == nil {
 		t.Fatal("Expected key not found error")
 	}
