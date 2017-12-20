@@ -28,7 +28,7 @@ func NewCertificateManager(r routing.ValueStore) *CertificateManager {
 	}
 }
 
-func getCertPath(certHash string) string {
+func GetCertPath(certHash string) string {
 	return certPrefix + certHash
 }
 
@@ -40,7 +40,7 @@ func (m *CertificateManager) PutCertificate(ctx context.Context, cert *x509.Cert
 	}
 	
 	certHash := getCertificateHashFromBytes(pemBytes)
-	certKey := getCertPath(certHash)
+	certKey := GetCertPath(certHash)
 	log.Debugf("Putting certificate at %s", certKey)
 
 	timectx, cancel := context.WithTimeout(ctx, CertPutTimeout)
@@ -59,7 +59,7 @@ func (m *CertificateManager) GetCertificate(ctx context.Context, certHash string
 		return nil, fmt.Errorf("Bad certificate hash: [%s]", certHash)
 	}
 
-	certKey := getCertPath(certHash)
+	certKey := GetCertPath(certHash)
 	log.Debugf("Fetching certificate at %s", certKey)
 
 	timectx, cancel := context.WithTimeout(ctx, CertFetchTimeout)

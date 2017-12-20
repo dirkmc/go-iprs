@@ -1,4 +1,4 @@
-package iprs_record
+package iprs_record_test
 
 import (
 	"context"
@@ -11,14 +11,15 @@ import (
 	"time"
 
 	c "github.com/dirkmc/go-iprs/certificate"
+	rec "github.com/dirkmc/go-iprs/record"
 	rsp "github.com/dirkmc/go-iprs/path"
 	pb "github.com/dirkmc/go-iprs/pb"
 	path "github.com/ipfs/go-ipfs/path"
-	mockrouting "github.com/ipfs/go-ipfs/routing/mock"
 	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
 	testutil "gx/ipfs/QmeDA8gNhvRTsbrjEieay5wezupJDiky8xvCzDABbsGzmp/go-testutil"
+	vs "github.com/dirkmc/go-iprs/vs"
 	// gologging "github.com/whyrusleeping/go-logging"
 	// logging "github.com/ipfs/go-log"
 )
@@ -28,16 +29,17 @@ func TestCertRecordVerification(t *testing.T) {
 
 	ctx := context.Background()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
-	r := mockrouting.NewServer().ClientWithDatastore(ctx, testutil.RandIdentityOrFatal(t), dstore)
+	id := testutil.RandIdentityOrFatal(t)
+	r := vs.NewMockValueStore(context.Background(), id, dstore)
 	certManager := c.NewCertificateManager(r)
-	verifier := NewCertRecordVerifier(certManager)
+	verifier := rec.NewCertRecordVerifier(certManager)
 
 	// Simplifies creating a record and publishing it to routing
 	NewRecord := func() func(rsp.IprsPath, *rsa.PrivateKey, *x509.Certificate, uint64, time.Time) *pb.IprsEntry {
 		return func(iprsKey rsp.IprsPath, pk *rsa.PrivateKey, cert *x509.Certificate, seq uint64, eol time.Time) *pb.IprsEntry {
-			vl := NewEolRecordValidity(eol)
-			s := NewCertRecordSigner(certManager, cert, pk)
-			rec := NewRecord(r, vl, s, path.Path("foo"))
+			vl := rec.NewEolRecordValidity(eol)
+			s := rec.NewCertRecordSigner(certManager, cert, pk)
+			rec := rec.NewRecord(r, vl, s, path.Path("foo"))
 			err := rec.Publish(ctx, iprsKey, seq)
 			if err != nil {
 				t.Fatal(err)
@@ -127,44 +129,96 @@ func TestCertRecordVerification(t *testing.T) {
 
 	err = verifier.VerifyRecord(ctx, childCertIprsKey, e3)
 	if err == nil {
+		t.Fatal("Failed to return error for signature with unrelated cert")
+	}
+
+
+	// Create a temporary CA certificate, sign a record with it and
+	// publish the record (which will publish the cert to the network as well)
+	tmpCaCert, tmpPk, err := generateCACertificate("temporary ca cert")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpCaCertIprsKey := getIprsPathFromCert(t, tmpCaCert, "/somePath")
+	e4 := NewRecord(tmpCaCertIprsKey, tmpPk, tmpCaCert, 1, ts.Add(time.Hour))
+
+	// Record should verify correctly
+	err = verifier.VerifyRecord(ctx, tmpCaCertIprsKey, e4)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	/*
-		TODO: Use mocks to make these tests possible
-		(at the moment Publish publishes the cert to thet network so there is no error)
+	// Delete the certificate from the network
+	deleteFromRouting(t, r, tmpCaCert)
 
-		// Record is not valid if the CA cert could not be retrieved
-		// from the network
-		tmpCaCert, tmpPk, err := generateCACertificate("temporary ca cert")
-		if err != nil {
-			t.Fatal(err)
-		}
-		tmpCaCertIprsKey := getIprsPathFromCert(t, tmpCaCert, "/somePath")
-		e4 := NewRecord(tmpCaCertIprsKey, tmpPk, tmpCaCert, 1, ts.Add(time.Hour))
+	// Record should now fail to verify because CA cert cannot be retrieved
+	// from the network
+	err = verifier.VerifyRecord(ctx, tmpCaCertIprsKey, e4)
+	if err == nil {
+		t.Fatal("Failed to return error for record with cert that is not available on the network")
+	}
 
-		// Note: We never added the cert to the Certificate Manager
-		// so it will not be available to the verifier
-		err = verifier.VerifyRecord(ctx, tmpCaCertIprsKey, e4)
-		if err == nil {
-			t.Fatal(err)
-		}
 
-		// Record is not valid if the child cert could not be retrieved
-		// from the network (even though issuing CA cert can be)
-		tmpChildCert, tmpChildPk, err := generateChildCertificate("tmp child cert", caCert, caPk)
-		if err != nil {
-			t.Fatal(err)
-		}
-		tmpChildCertIprsKey := getIprsPathFromCert(t, caCert, "/somePath")
-		e5 := NewRecord(tmpChildCertIprsKey, tmpChildPk, tmpChildCert, 1, ts.Add(time.Hour))
+	// Create a temporary child certificate issued by the CA certificate,
+	// sign a record with it and publish the record (which will publish
+	// the child cert to the network as well)
+	tmpChildCert, tmpChildPk, err := generateChildCertificate("tmp child cert", caCert, caPk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpChildCertIprsKey := getIprsPathFromCert(t, caCert, "/somePath")
+	e5 := NewRecord(tmpChildCertIprsKey, tmpChildPk, tmpChildCert, 1, ts.Add(time.Hour))
 
-		// Note: Issuing cert is in Certificate Manager but not child cert
-		err = verifier.VerifyRecord(ctx, tmpChildCertIprsKey, e5)
-		if err == nil {
-			t.Fatal(err)
-		}
-	*/
+	// Record signed with child cert should verify correctly
+	err = verifier.VerifyRecord(ctx, tmpChildCertIprsKey, e5)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Delete issuing certificate from the network
+	deleteFromRouting(t, r, caCert)
+
+	// Record should now fail to verify because issuing CA cert cannot
+	// be retrieved from the network
+	err = verifier.VerifyRecord(ctx, tmpChildCertIprsKey, e5)
+	if err == nil {
+		t.Fatal("Failed to return error for record with issuing cert that is not available on the network")
+	}
+
+	// Restore issuing CA certificate to the network
+	_, err = certManager.PutCertificate(ctx, caCert)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Make sure record verifies correctly now that issuing
+	// cert is available
+	err = verifier.VerifyRecord(ctx, tmpChildCertIprsKey, e5)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Delete child certificate from the network
+	deleteFromRouting(t, r, tmpChildCert)
+
+	// Record should now fail to verify because child CA cert cannot
+	// be retrieved from the network (even though issuing cert can be
+	// retrieved from the network)
+	err = verifier.VerifyRecord(ctx, tmpChildCertIprsKey, e5)
+	if err == nil {
+		t.Fatal("Failed to return error for record with cert that is not available on the network")
+	}
+}
+
+func deleteFromRouting(t *testing.T, r *vs.MockValueStore, cert *x509.Certificate) {
+	certHash, err := c.GetCertificateHash(cert)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = r.DeleteValue(c.GetCertPath(certHash))
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func getIprsPathFromCert(t *testing.T, cert *x509.Certificate, relativePath string) rsp.IprsPath {
