@@ -1,7 +1,7 @@
 package iprs_cert
 
 import (
-	"errors"
+	"fmt"
 	u "github.com/ipfs/go-ipfs-util"
 	record "gx/ipfs/QmWGtsyPYEoiqTtWLpeUA2jpW4YSZgarKDD2zivYAFz7sR/go-libp2p-record"
 )
@@ -11,21 +11,21 @@ import (
 // that matches the passed in key
 func ValidateCertificateRecord(k string, val []byte) error {
 	if len(k) < certPrefixLen {
-		return errors.New("Invalid certificate record key")
+		return fmt.Errorf("Invalid certificate record key [%s]", k)
 	}
 
 	if k[:certPrefixLen] != certPrefix {
-		return errors.New("Certificate record key was not prefixed with " + certPrefix)
+		return fmt.Errorf("Certificate record key [%s] was not prefixed with %s", k, certPrefix)
 	}
 
-	hash := k[certPrefixLen:]
-	if !u.IsValidHash(hash) {
-		return errors.New("Certificate record key did not contain valid multihash: " + hash)
+	keyHash := k[certPrefixLen:]
+	if !u.IsValidHash(keyHash) {
+		return fmt.Errorf("Certificate record key [%s] did not contain valid multihash [%s]", k, keyHash)
 	}
 
-	pkh := u.Hash(val).B58String()
-	if hash != pkh {
-		return errors.New("Certificate record key does not match hash of certificate")
+	certHash := getCertificateHashFromBytes(val)
+	if keyHash != certHash {
+		return fmt.Errorf("Certificate record key [%s] does not match hash of certificate data [%s]", keyHash, certHash)
 	}
 	return nil
 }
