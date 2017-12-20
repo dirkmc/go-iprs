@@ -1,18 +1,19 @@
 package iprs
 
 import (
+	"context"
 	"fmt"
 	"testing"
-
-	context "context"
-
-	// path "github.com/ipfs/go-ipfs/path"
+	"time"
+	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
+	path "github.com/ipfs/go-ipfs/path"
+	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
+	dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
+	rec "github.com/dirkmc/go-iprs/record"
 	rsv "github.com/dirkmc/go-iprs/resolver"
-	// offroute "github.com/ipfs/go-ipfs/routing/offline"
-	// "github.com/ipfs/go-ipfs/unixfs"
-	// ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
-	// ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
-	// dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
+	testutil "gx/ipfs/QmeDA8gNhvRTsbrjEieay5wezupJDiky8xvCzDABbsGzmp/go-testutil"
+	u "github.com/ipfs/go-ipfs-util"
+	vs "github.com/dirkmc/go-iprs/vs"
 	// gologging "github.com/whyrusleeping/go-logging"
 	// logging "github.com/ipfs/go-log"
 )
@@ -59,7 +60,7 @@ func mockResolverTwo() *mockResolver {
 	}
 }
 
-func TestNamesysResolution(t *testing.T) {
+func TestRootResolution(t *testing.T) {
 	// logging.SetAllLoggers(gologging.DEBUG)
 
 	r := &mprs{
@@ -86,20 +87,45 @@ func TestNamesysResolution(t *testing.T) {
 	testResolution(t, r, "/ipns/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD", 3, "/ipns/QmatmE9msSfkKxoffpHwNLNKgwZG8eT9Bud6YoPab52vpy", ErrRecursion)
 }
 
-/*
-func TestPublishWithCache0(t *testing.T) {
-	dst := dssync.MutexWrap(ds.NewMapDatastore())
-	priv, _, err := ci.GenerateKeyPair(ci.RSA, 1024)
-	if err != nil {
-		t.Fatal(err)
-	}
-	routing := offroute.NewOfflineRouter(dst, priv)
+func TestPublishAndResolve(t *testing.T) {
+	ctx := context.Background()
+	dstore := dssync.MutexWrap(ds.NewMapDatastore())
+	id := testutil.RandIdentityOrFatal(t)
+	r := vs.NewMockValueStore(context.Background(), id, dstore)
+	kvstore := vs.NewKadValueStore(dstore, r)
+	f := rec.NewRecordFactory(kvstore)
+	rs := NewRecordSystem(kvstore, 0)
 
-	nsys := NewNameSystem(routing, dst, 0)
-	p, err := path.ParsePath(unixfs.EmptyDirNode().Cid().String())
+	// Generate a key for signing the records
+	sr := u.NewSeededRand(15)
+	pk, _, err := ci.GenerateKeyPairWithReader(ci.RSA, 1024, sr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	nsys.Publish(context.Background(), priv, p)
+
+	// Create an EOL record
+	p := path.Path("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
+	eol := time.Now().Add(time.Hour)
+	record := f.NewEolKeyRecord(p, pk, eol)
+
+	iprsKey, err := record.BasePath()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// Publish the record
+	err = rs.Publish(ctx, iprsKey, record)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// Retrieve the record value
+	res, err := rs.Resolve(ctx, iprsKey.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res != p {
+		t.Fatal("Got back incorrect value")
+	}
 }
-*/
