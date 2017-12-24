@@ -206,7 +206,7 @@ func TestPublishAndResolveSharedKey(t *testing.T) {
 		t.Fatal("Got back incorrect value")
 	}
 
-	// Create a new EOL record
+	// Create a new EOL record with the child certificate
 	p2 := path.Path("/ipfs/QmatmE9msSfkKxoffpHwNLNKgwZG8eT9Bud6YoPab52vpy")
 	eol = time.Now().Add(time.Minute*10)
 	record = f.NewEolCertRecord(p2, childCert, childPk, eol)
