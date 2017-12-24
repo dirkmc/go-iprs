@@ -201,8 +201,6 @@ func TestPublishAndResolveSharedKey(t *testing.T) {
 
 	// Should be the published record value
 	if res != p1 {
-		fmt.Println(res)
-		fmt.Println(p1)
 		t.Fatal("Got back incorrect value")
 	}
 
