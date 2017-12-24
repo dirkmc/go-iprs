@@ -114,13 +114,16 @@ func (s *CachedValueStore) GetValue(ctx context.Context, iprsKey rsp.IprsPath) (
 	// Check the cache
 	val, ok := s.cacheGet(iprsKey)
 	if ok {
+		log.Debugf("Found %s in cache: %s", iprsKey, val)
 		return val, nil
 	}
 
 	// Not in the cache, go out to the DHT
 	if iprsKey.IsIpns() {
+		log.Debugf("Fetching IPNS path %s from DHT", iprsKey)
 		return s.GetIpnsValue(ctx, iprsKey)
 	}
+	log.Debugf("Fetching IPRS path %s from DHT", iprsKey)
 	return s.GetIprsValue(ctx, iprsKey)
 }
 

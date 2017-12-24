@@ -54,7 +54,7 @@ func (m *CertificateManager) PutCertificate(ctx context.Context, cert *x509.Cert
 }
 
 func (m *CertificateManager) GetCertificate(ctx context.Context, certHash string) (*x509.Certificate, error) {
-	log.Debugf("CertificateManager get certificate [%s]", certHash)
+	log.Debugf("CertificateManager get certificate %s", certHash)
 	if !u.IsValidHash(certHash) {
 		return nil, fmt.Errorf("Bad certificate hash: [%s]", certHash)
 	}

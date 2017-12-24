@@ -69,7 +69,6 @@ func Resolve(ctx context.Context, r Lookup, name string, depth int) (path.Path, 
 		for _, prefix := range prefixes {
 			if strings.HasPrefix(p, prefix) {
 				matched = true
-				//name = strings.TrimPrefix(p, prefix)
 				name = p
 				break
 			}

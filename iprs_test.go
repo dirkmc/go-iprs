@@ -10,8 +10,10 @@ import (
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
 	rec "github.com/dirkmc/go-iprs/record"
+	rsp "github.com/dirkmc/go-iprs/path"
 	rsv "github.com/dirkmc/go-iprs/resolver"
 	testutil "gx/ipfs/QmeDA8gNhvRTsbrjEieay5wezupJDiky8xvCzDABbsGzmp/go-testutil"
+	tu "github.com/dirkmc/go-iprs/test"
 	u "github.com/ipfs/go-ipfs-util"
 	vs "github.com/dirkmc/go-iprs/vs"
 	// gologging "github.com/whyrusleeping/go-logging"
@@ -104,10 +106,9 @@ func TestPublishAndResolve(t *testing.T) {
 	}
 
 	// Create an EOL record
-	p := path.Path("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
+	p1 := path.Path("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
 	eol := time.Now().Add(time.Hour)
-	record := f.NewEolKeyRecord(p, pk, eol)
-
+	record := f.NewEolKeyRecord(p1, pk, eol)
 	iprsKey, err := record.BasePath()
 	if err != nil {
 		fmt.Println(err)
@@ -125,7 +126,105 @@ func TestPublishAndResolve(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if res != p {
+	// Should be the published record value
+	if res != p1 {
+		t.Fatal("Got back incorrect value")
+	}
+
+	// Create a new EOL record
+	p2 := path.Path("/ipfs/QmatmE9msSfkKxoffpHwNLNKgwZG8eT9Bud6YoPab52vpy")
+	eol = time.Now().Add(time.Minute*10)
+	record = f.NewEolKeyRecord(p2, pk, eol)
+
+	// Publish the record to the same path
+	err = rs.Publish(ctx, iprsKey, record)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// Retrieve the record value
+	res, err = rs.Resolve(ctx, iprsKey.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Should be the newly published record value
+	if res != p2 {
+		t.Fatal("Got back incorrect value")
+	}
+}
+
+func TestPublishAndResolveSharedKey(t *testing.T) {
+	ctx := context.Background()
+	dstore := dssync.MutexWrap(ds.NewMapDatastore())
+	id := testutil.RandIdentityOrFatal(t)
+	r := vs.NewMockValueStore(context.Background(), id, dstore)
+	kvstore := vs.NewKadValueStore(dstore, r)
+	f := rec.NewRecordFactory(kvstore)
+	rs := NewRecordSystem(kvstore, 0)
+
+	// CA Certificate
+	caCert, caPk, err := tu.GenerateCACertificate("ca cert")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Child of CA Certificate
+	childCert, childPk, err := tu.GenerateChildCertificate("child cert", caCert, caPk)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create an EOL record
+	p1 := path.Path("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
+	eol := time.Now().Add(time.Hour)
+	record := f.NewEolCertRecord(p1, caCert, caPk, eol)
+	iprsBasePath, err := record.BasePath()
+	if err != nil {
+		fmt.Println(err)
+	}
+	iprsKey, err := rsp.FromString(iprsBasePath.String() + "/my/path")
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// Publish the record
+	err = rs.Publish(ctx, iprsKey, record)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// Retrieve the record value
+	res, err := rs.Resolve(ctx, iprsKey.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Should be the published record value
+	if res != p1 {
+		fmt.Println(res)
+		fmt.Println(p1)
+		t.Fatal("Got back incorrect value")
+	}
+
+	// Create a new EOL record
+	p2 := path.Path("/ipfs/QmatmE9msSfkKxoffpHwNLNKgwZG8eT9Bud6YoPab52vpy")
+	eol = time.Now().Add(time.Minute*10)
+	record = f.NewEolCertRecord(p2, childCert, childPk, eol)
+
+	// Publish the record to the same path
+	err = rs.Publish(ctx, iprsKey, record)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// Retrieve the record value
+	res, err = rs.Resolve(ctx, iprsKey.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Should be the newly published record value
+	if res != p2 {
 		t.Fatal("Got back incorrect value")
 	}
 }

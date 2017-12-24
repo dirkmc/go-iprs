@@ -84,24 +84,6 @@ func (ns *mprs) ResolveOnce(ctx context.Context, name string) (string, error) {
 		return "", rsv.ErrResolveFailed
 	}
 
-	resolveOnce := func(rname string, key string) (string, error) {
-		res, ok := ns.resolvers[rname]
-		if !ok {
-			log.Warningf("Could not find resolver with name %s", rname)
-			return "", rsv.ErrResolveFailed
-		}
-		p, err := res.ResolveOnce(ctx, key)
-		if err != nil {
-			log.Warningf("Could not resolve with %s resolver: %s", rname, err)
-			return "", rsv.ErrResolveFailed
-		}
-
-		if len(segments) > 3 {
-			return strings.TrimRight(p, "/") + "/" + segments[3], nil
-		}
-		return p, nil
-	}
-
 	// Resolver selection:
 	// 1. if it is a multihash resolve through "dht"
 	// 2. if it is a domain name, resolve through "dns"
@@ -110,17 +92,32 @@ func (ns *mprs) ResolveOnce(ctx context.Context, name string) (string, error) {
 
 	_, err := mh.FromB58String(key)
 	if err == nil {
-		log.Debugf("RecordSystem.ResolveOnce DHT resolve %s", key)
-		return resolveOnce("dht", name)
+		log.Debugf("RecordSystem DHT ResolveOnce %s", name)
+		return ns.resolveOnceWithResolver(ctx, "dht", name)
 	}
 
 	if isd.IsDomain(key) {
-		log.Debugf("RecordSystem.ResolveOnce DNS resolve %s", key)
-		return resolveOnce("dns", key)
+		log.Debugf("RecordSystem DNS ResolveOnce %s", key)
+		return ns.resolveOnceWithResolver(ctx, "dns", key)
 	}
 
-	log.Debugf("RecordSystem.ResolveOnce proquint resolve %s", key)
-	return resolveOnce("proquint", key)
+	log.Debugf("RecordSystem proquint ResolveOnce %s", key)
+	return ns.resolveOnceWithResolver(ctx, "proquint", key)
+}
+
+func (ns *mprs) resolveOnceWithResolver(ctx context.Context, rname string, key string) (string, error) {
+	res, ok := ns.resolvers[rname]
+	if !ok {
+		log.Warningf("Could not find resolver with name %s", rname)
+		return "", rsv.ErrResolveFailed
+	}
+	p, err := res.ResolveOnce(ctx, key)
+	if err != nil {
+		log.Warningf("Could not resolve with %s resolver: %s", rname, err)
+		return "", rsv.ErrResolveFailed
+	}
+
+	return p, nil
 }
 
 // Publish implements Publisher
