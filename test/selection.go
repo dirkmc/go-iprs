@@ -1,4 +1,4 @@
-package iprs_record
+package iprs_test
 
 import (
 	"fmt"

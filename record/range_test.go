@@ -8,6 +8,7 @@ import (
 	u "github.com/ipfs/go-ipfs-util"
 	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 	rsp "github.com/dirkmc/go-iprs/path"
+	tu "github.com/dirkmc/go-iprs/test"
 )
 
 // This is just so we can get an IprsEntry for a given sequence number and timestamps
@@ -137,7 +138,7 @@ func TestRangeOrdering(t *testing.T) {
 }
 
 func assertRangeSelected(t *testing.T, r *pb.IprsEntry, from ...*pb.IprsEntry) {
-	err := AssertSelected(RangeRecordChecker.SelectRecord, r, from)
+	err := tu.AssertSelected(RangeRecordChecker.SelectRecord, r, from)
 	if err != nil {
 		t.Fatal(err)
 	}
