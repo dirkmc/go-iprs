@@ -97,12 +97,12 @@ func (ns *mprs) ResolveOnce(ctx context.Context, name string) (string, error) {
 	}
 
 	if isd.IsDomain(key) {
-		log.Debugf("RecordSystem DNS ResolveOnce %s", key)
-		return ns.resolveOnceWithResolver(ctx, "dns", key)
+		log.Debugf("RecordSystem DNS ResolveOnce %s", name)
+		return ns.resolveOnceWithResolver(ctx, "dns", name)
 	}
 
-	log.Debugf("RecordSystem proquint ResolveOnce %s", key)
-	return ns.resolveOnceWithResolver(ctx, "proquint", key)
+	log.Debugf("RecordSystem proquint ResolveOnce %s", name)
+	return ns.resolveOnceWithResolver(ctx, "proquint", name)
 }
 
 func (ns *mprs) resolveOnceWithResolver(ctx context.Context, rname string, key string) (string, error) {

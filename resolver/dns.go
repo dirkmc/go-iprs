@@ -3,6 +3,7 @@ package iprs_resolver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"strings"
 
@@ -55,7 +56,7 @@ func (r *DNSResolver) ResolveOnce(ctx context.Context, name string) (string, err
 	domain := segments[0]
 
 	if !isd.IsDomain(domain) {
-		return "", errors.New("not a valid domain name")
+		return "", fmt.Errorf("Not a valid domain name: [%s]", domain)
 	}
 	log.Debugf("DNSResolver resolving %s", domain)
 
@@ -90,9 +91,8 @@ func (r *DNSResolver) ResolveOnce(ctx context.Context, name string) (string, err
 	}
 	if len(segments) > 1 {
 		return strings.TrimRight(p, "/") + "/" + segments[1], nil
-	} else {
-		return p, nil
 	}
+	return p, nil
 }
 
 func workDomain(r *DNSResolver, name string, res chan lookupRes) {

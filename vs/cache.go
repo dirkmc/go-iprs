@@ -137,7 +137,7 @@ func (s *CachedValueStore) GetIpnsValue(ctx context.Context, iprsKey rsp.IprsPat
 		// IPNS records are stored in the DHT at /ipns/string(<hash>)
 		// ie the hash is not B58 encoded
 		name := "/ipns/" + string(iprsKey.GetHash())
-			val, err := s.vs.GetValue(ctx, name)
+		val, err := s.vs.GetValue(ctx, name)
 		if err != nil {
 			log.Debugf("RoutingResolver: dht get failed: %s", err)
 			resp <- err
