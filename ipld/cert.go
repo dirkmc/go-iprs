@@ -3,10 +3,10 @@ package iprs_ipld
 import (
 	"errors"
 
-	blocks "github.com/ipfs/go-block-format"
-	cid "github.com/ipfs/go-cid"
-	mh "github.com/multiformats/go-multihash"
-	node "github.com/ipfs/go-ipld-format"
+	node "gx/ipfs/QmNwUEK7QbwSqyKBu3mMtToo8SUc6wQJ7gdZq4gGGJqfnf/go-ipld-format"
+	mh "gx/ipfs/QmYeKnKpubCMRiq3PGZcTREErthbb5Q9cXsCoSkD9bjEBd/go-multihash"
+	blocks "gx/ipfs/QmYsEQydGrsxNZfAiskvQ76N2xE9hDQtSAkRSynwMiUK3c/go-block-format"
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 )
 
 // TODO: Add to https://github.com/ipfs/go-cid/blob/master/cid.go
@@ -15,17 +15,17 @@ const CodecCertRaw = 0xe0
 // A PEM encoded x509 Certificate
 type Certificate []byte
 
-func DecodeBlock(block blocks.Block) (node.Node, error) {
+func DecodeCertificateBlock(block blocks.Block) (node.Node, error) {
 	prefix := block.Cid().Prefix()
 
 	if prefix.Codec != CodecCertRaw || prefix.MhType != mh.SHA2_256 || prefix.MhLength != mh.DefaultLengths[mh.SHA2_256] {
-		return nil, errors.New("invalid CID prefix")
+		return nil, errors.New("invalid CID prefix for Certificate block")
 	}
 
 	return Certificate(block.RawData()), nil
 }
 
-var _ node.DecodeBlockFunc = DecodeBlock
+var _ node.DecodeBlockFunc = DecodeCertificateBlock
 
 func (c Certificate) Cid() *cid.Cid {
 	certCid, _ := cid.Prefix{
@@ -82,3 +82,7 @@ func (c Certificate) Tree(p string, depth int) []string {
 }
 
 var _ node.Node = (Certificate)(nil)
+
+func init() {
+	node.Register(CodecCertRaw, DecodeCertificateBlock)
+}

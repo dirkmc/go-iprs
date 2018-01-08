@@ -6,8 +6,13 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	path "github.com/ipfs/go-ipfs/path"
-	logging "github.com/ipfs/go-log"
+
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
+	isd "gx/ipfs/QmZmmuAXgX73UQmX1jRKjTGmjzq24Jinqkq8vzkBtno4uX/go-is-domain"
+	logging "gx/ipfs/QmSpJByNKFX1sCsHBEp3R73FL4NF6FnQTEGyNAXHm2GS52/go-log"
+	node "gx/ipfs/QmNwUEK7QbwSqyKBu3mMtToo8SUc6wQJ7gdZq4gGGJqfnf/go-ipld-format"
+	rsp "github.com/dirkmc/go-iprs/path"
+	vs "github.com/dirkmc/go-iprs/vs"
 )
 
 var log = logging.Logger("iprs.resolver")
@@ -31,59 +36,85 @@ var ErrResolveFailed = errors.New("Could not resolve name.")
 // ErrResolveRecursion signals a recursion-depth limit.
 var ErrResolveRecursion = errors.New("Could not resolve name (recursion limit exceeded).")
 
-type Lookup interface {
-	// ResolveOnce looks up a name once (without recursion).
-	ResolveOnce(ctx context.Context, name string) (value string, err error)
+var prefixes = []string{"/iprs/", "/ipns/"}
+
+type Resolver struct {
+	dns *DNSResolver
+	dht *DHTResolver
 }
 
-var prefixes = []string{ "/iprs/", "/ipns/" }
+func NewResolver(vstore *vs.CachedValueStore) *Resolver {
+	dns := NewDNSResolver()
+	dht := NewDHTResolver(vstore)
+	return &Resolver{dns, dht}
+}
 
-// Resolve is a helper for implementing Resolver.ResolveN using resolveOnce.
-func Resolve(ctx context.Context, r Lookup, name string, depth int) (path.Path, error) {
-	for {
-		// Lookup the path in the resolver
-		p, err := r.ResolveOnce(ctx, name)
-		if err != nil {
-			log.Warningf("Could not resolve %s", name)
-			return "", err
-		}
-		log.Debugf("Resolved %s to %s", name, p)
-
-		// If we've bottomed out with an IPFS path we can return
-		if strings.HasPrefix(p, "/ipfs/") {
-			return parsePath(p)
-		}
-
-		// If we've recursed up to the limit, bail out with an error
-		if depth == 1 {
-			pth, err := parsePath(p)
-			if err != nil {
-				return "", ErrResolveRecursion
-			}
-			return pth, ErrResolveRecursion
-		}
-
-		// If the path has a recognized prefix, resolve it
-		// eg /ipns/www.example.com
-		matched := false
-		for _, prefix := range prefixes {
-			if strings.HasPrefix(p, prefix) {
-				matched = true
-				name = p
-				break
-			}
-		}
-
-		// There were no recognized prefixes, so just return the path itself
-		if !matched {
-			return parsePath(p)
-		}
-
-		// Recurse
-		if depth > 1 {
-			depth--
-		}
+// Recursively resolves a path, eg
+// /iprs/www.example.com/some/path => /ipns/<hash>/some/path => /ipfs/<hash>/some/path
+func (r *Resolver) Resolve(ctx context.Context, p string, depth int) (*node.Link, []string, error) {
+	// /iprs/<hash>/some/path => ["", "iprs", "<hash>", "some", "path"]
+	parts := strings.Split(p, "/")
+	if len(parts) < 3 {
+		return nil, nil, fmt.Errorf("Could not resolve %s", p)
 	}
+
+	// /iprs/<hash>
+	p = "/" + parts[1] + "/" + parts[2]
+	c, err := r.ResolveName(ctx, p, depth)
+	if err != nil {
+		return nil, nil, err
+	}
+	
+	// Link, ["some", "path"]
+	return &node.Link{Cid: c}, parts[3:], nil
+}
+
+// Recursively resolves a name, eg
+// /iprs/www.example.com => /ipns/<hash> => /ipfs/<hash>
+func (r *Resolver) ResolveName(ctx context.Context, p string, depth int) (*cid.Cid, error) {
+	// If we've recursed up to the limit, bail out with an error
+	if depth == 0 {
+		return nil, ErrResolveRecursion
+	}
+
+	log.Debugf("Resolve %s", p)
+
+	// If it's an IPFS path, return the CID
+	if strings.HasPrefix(p, "/ipfs/") {
+		return rsp.ParseTargetToCid([]byte(p))
+	}
+
+	// If it's a domain name, resolve using DNS
+	name := removePathPrefix(p)
+	if(isd.IsDomain(name)) {
+		res, err := r.dns.Resolve(ctx, name)
+		if err != nil {
+			return nil, err
+		}
+		return r.ResolveName(ctx, res, depth -1)
+	}
+
+	// If it's an IPNS or IPRS path, resolve using the DHT
+	// TODO: Make it possible to resolve /ipns/<hash> => /ipns/example.com
+	iprsKey, err := rsp.FromString(p)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := r.dht.Resolve(ctx, iprsKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// If the CID is for an IPRS or IPNS node, recurse
+	k, err := rsp.FromCid(c)
+	if err == nil {
+		return r.ResolveName(ctx, k.String(), depth - 1)
+	}
+
+	// If we've bottomed out with a CID for a non-recursive node
+	// (eg IPFS, git, btc etc) we can return it
+	return c, nil
 }
 
 func removePathPrefix(val string) string {
@@ -91,13 +122,4 @@ func removePathPrefix(val string) string {
 		val = strings.TrimPrefix(val, prefix)
 	}
 	return val
-}
-
-func parsePath(val string) (path.Path, error) {
-	p, err := path.ParsePath(val)
-	if err != nil {
-		return "", fmt.Errorf("Could not parse path from [%s]: %s", val, err)
-	}
-
-	return p, nil
 }

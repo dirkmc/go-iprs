@@ -5,47 +5,60 @@ import (
 	"testing"
 	"time"
 
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
+	psh "github.com/dirkmc/go-iprs/publisher"
 	rsp "github.com/dirkmc/go-iprs/path"
 	rec "github.com/dirkmc/go-iprs/record"
-	path "github.com/ipfs/go-ipfs/path"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
+	dstest "github.com/ipfs/go-ipfs/merkledag/test"
 	testutil "gx/ipfs/QmeDA8gNhvRTsbrjEieay5wezupJDiky8xvCzDABbsGzmp/go-testutil"
 )
 
-func getEolRecord(t *testing.T, p path.Path, ts time.Time, r ValueStore) (rsp.IprsPath, *rec.Record) {
+func getEolRecord(t *testing.T, c *cid.Cid, ts time.Time, r ValueStore) (rsp.IprsPath, *rec.Record) {
 	pk, _, err := testutil.RandTestKeyPair(512)
 	if err != nil {
 		t.Fatal(err)
 	}
-	factory := rec.NewRecordFactory(r)
-	eolRecord := factory.NewEolKeyRecord(p, pk, ts)
-	iprsKey, err := eolRecord.BasePath()
+	vl := rec.NewEolRecordValidation(ts)
+	s := rec.NewKeyRecordSigner(pk)
+	record, err := rec.NewRecord(vl, s, c)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return iprsKey, eolRecord
+
+	iprsKey, err := s.BasePath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return iprsKey, record
 }
 
 func TestCacheSizeZero(t *testing.T) {
 	ctx := context.Background()
+	dag := dstest.Mock()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
 	r := NewMockValueStore(context.Background(), id, dstore)
+	publisher := psh.NewDHTPublisher(r, dag)
+
 	ts := time.Now().Add(time.Hour)
-	p := path.FromString("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
-	iprsKey, eolRecord := getEolRecord(t, p, ts, r)
+	c, err := cid.Parse("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
+	if err != nil {
+		t.Fatal(err)
+	}
+	iprsKey, eolRecord := getEolRecord(t, c, ts, r)
 
 	// Publish record
-	eolRecord.Publish(ctx, iprsKey, 1)
+	publisher.Publish(ctx, iprsKey, eolRecord)
 
 	// Get the entry value (cache is size zero so it will be retrieved from routing)
-	vstore := NewCachedValueStore(r, 0, nil)
+	vstore := NewCachedValueStore(r, dag, 0, nil)
 	res, err := vstore.GetValue(ctx, iprsKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(res) != string(p) {
+	if !res.Equals(c) {
 		t.Fatal("Got back incorrect value")
 	}
 
@@ -65,23 +78,29 @@ func TestCacheSizeZero(t *testing.T) {
 
 func TestCacheSizeTen(t *testing.T) {
 	ctx := context.Background()
+	dag := dstest.Mock()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
 	r := NewMockValueStore(context.Background(), id, dstore)
-	vstore := NewCachedValueStore(r, 10, nil)
+	vstore := NewCachedValueStore(r, dag, 10, nil)
+	publisher := psh.NewDHTPublisher(r, dag)
+
 	ts := time.Now().Add(time.Hour)
-	p := path.FromString("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
-	iprsKey, eolRecord := getEolRecord(t, p, ts, r)
+	c, err := cid.Parse("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
+	if err != nil {
+		t.Fatal(err)
+	}
+	iprsKey, eolRecord := getEolRecord(t, c, ts, r)
 
 	// Publish record
-	eolRecord.Publish(ctx, iprsKey, 1)
+	publisher.Publish(ctx, iprsKey, eolRecord)
 
 	// Get the entry value
 	res, err := vstore.GetValue(ctx, iprsKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(res) != string(p) {
+	if !res.Equals(c) {
 		t.Fatal("Got back incorrect value")
 	}
 
@@ -96,30 +115,36 @@ func TestCacheSizeTen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(res) != string(p) {
+	if !res.Equals(c) {
 		t.Fatal("Got back incorrect value")
 	}
 }
 
 func TestCacheEolExpired(t *testing.T) {
 	ctx := context.Background()
+	dag := dstest.Mock()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
 	r := NewMockValueStore(context.Background(), id, dstore)
-	vstore := NewCachedValueStore(r, 10, nil)
+	vstore := NewCachedValueStore(r, dag, 10, nil)
+	publisher := psh.NewDHTPublisher(r, dag)
+
 	ts := time.Now().Add(time.Millisecond * 100)
- 	p := path.FromString("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
-	iprsKey, eolRecord := getEolRecord(t, p, ts, r)
+	c, err := cid.Parse("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
+	if err != nil {
+		t.Fatal(err)
+	}
+	iprsKey, eolRecord := getEolRecord(t, c, ts, r)
 
 	// Publish record
-	eolRecord.Publish(ctx, iprsKey, 1)
+	publisher.Publish(ctx, iprsKey, eolRecord)
 
 	// Get the entry value
 	res, err := vstore.GetValue(ctx, iprsKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(res) != string(p) {
+	if !res.Equals(c) {
 		t.Fatal("Got back incorrect value")
 	}
 
@@ -141,38 +166,47 @@ func TestCacheEolExpired(t *testing.T) {
 
 func TestCacheTimeRangeExpired(t *testing.T) {
 	ctx := context.Background()
+	dag := dstest.Mock()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
 	r := NewMockValueStore(context.Background(), id, dstore)
-	factory := rec.NewRecordFactory(r)
-	vstore := NewCachedValueStore(r, 10, nil)
+	vstore := NewCachedValueStore(r, dag, 10, nil)
+	publisher := psh.NewDHTPublisher(r, dag)
 
 	pk, _, err := testutil.RandTestKeyPair(512)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	p := path.FromString("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
-	ts := time.Now()
-	InTenMillis := ts.Add(time.Millisecond * 100)
-	rangeRecord, err := factory.NewRangeKeyRecord(p, pk, nil, &InTenMillis)
+	c, err := cid.Parse("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
 	if err != nil {
 		t.Fatal(err)
 	}
-	iprsKey, err := rangeRecord.BasePath()
+	ts := time.Now()
+	end := ts.Add(time.Millisecond * 100)
+	vl, err := rec.NewRangeRecordValidation(nil, &end)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := rec.NewKeyRecordSigner(pk)
+	rangeRecord, err := rec.NewRecord(vl, s, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	iprsKey, err := s.BasePath()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Publish record
-	rangeRecord.Publish(ctx, iprsKey, 1)
+	publisher.Publish(ctx, iprsKey, rangeRecord)
 
 	// Get the entry value
 	res, err := vstore.GetValue(ctx, iprsKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(res) != string(p) {
+	if !res.Equals(c) {
 		t.Fatal("Got back incorrect value")
 	}
 

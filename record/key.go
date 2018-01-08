@@ -3,71 +3,95 @@ package iprs_record
 import (
 	"context"
 	"fmt"
-	pb "github.com/dirkmc/go-iprs/pb"
+
+	ld "github.com/dirkmc/go-iprs/ipld"
 	rsp "github.com/dirkmc/go-iprs/path"
+	node "gx/ipfs/QmNwUEK7QbwSqyKBu3mMtToo8SUc6wQJ7gdZq4gGGJqfnf/go-ipld-format"
 	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 )
 
-
 type KeyRecordSigner struct {
-	m *PublicKeyManager
-	pk ci.PrivKey
+	pk       ci.PrivKey
+	pubkNode node.Node
 }
 
-func NewKeyRecordSigner(m *PublicKeyManager, pk ci.PrivKey) *KeyRecordSigner {
-	return &KeyRecordSigner{ m, pk }
+func NewKeyRecordSigner(pk ci.PrivKey) *KeyRecordSigner {
+	return &KeyRecordSigner{pk, nil}
+}
+
+func (s *KeyRecordSigner) VerificationType() ld.IprsVerificationType {
+	return ld.VerificationType_Key
+}
+
+// Cache the Public Key node
+func (s *KeyRecordSigner) getPubkNode() (node.Node, error) {
+	if s.pubkNode != nil {
+		return s.pubkNode, nil
+	}
+
+	b, err := s.pk.GetPublic().Bytes()
+	if err != nil {
+		return nil, err
+	}
+	s.pubkNode = ld.PublicKey(b)
+
+	return s.pubkNode, nil
+}
+
+func (s *KeyRecordSigner) Nodes() ([]node.Node, error) {
+	n, err := s.getPubkNode()
+	if err != nil {
+		return nil, err
+	}
+	return []node.Node{n}, nil
 }
 
 func (s *KeyRecordSigner) BasePath() (rsp.IprsPath, error) {
-	h, err := GetPublicKeyHash(s.pk.GetPublic())
+	n, err := s.getPubkNode()
 	if err != nil {
 		return rsp.NilPath, err
 	}
-	return rsp.FromString("/iprs/" + h)
+	return rsp.FromString("/iprs/" + n.Cid().String())
 }
 
-func (s *KeyRecordSigner) VerificationType() *pb.IprsEntry_VerificationType {
-	t := pb.IprsEntry_Key
-	return &t
+func (s *KeyRecordSigner) SignRecord(data []byte) ([]byte, error) {
+	return s.pk.Sign(data)
 }
 
-func (s *KeyRecordSigner) Verification() ([]byte, error) {
-	return []byte{}, nil
+func (s *KeyRecordSigner) Verification() (interface{}, error) {
+	return nil, nil
 }
 
-func (s *KeyRecordSigner) PublishVerification(ctx context.Context, iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
-	// TODO: Check iprsKey is valid for this type of RecordSigner
-	return s.m.PutPublicKey(ctx, s.pk.GetPublic())
+func prepareKeySig(o interface{}) ([]byte, error) {
+	return nil, nil
 }
-
-func (s *KeyRecordSigner) SignRecord(entry *pb.IprsEntry) error {
-	sig, err := s.pk.Sign(RecordDataForSig(entry))
-	if err != nil {
-		return err
-	}
-	entry.Signature = sig
-
-	return nil
-}
-
 
 type KeyRecordVerifier struct {
 	m *PublicKeyManager
 }
 
 func NewKeyRecordVerifier(m *PublicKeyManager) *KeyRecordVerifier {
-	return &KeyRecordVerifier{ m }
+	return &KeyRecordVerifier{m}
 }
 
-func (v *KeyRecordVerifier) VerifyRecord(ctx context.Context, iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
-	pubk, err := v.m.GetPublicKey(ctx, iprsKey)
+func (v *KeyRecordVerifier) VerifyRecord(ctx context.Context, iprsKey rsp.IprsPath, record *Record) error {
+	pubk, err := v.m.GetPublicKey(ctx, iprsKey.Cid())
 	if err != nil {
 		return err
 	}
 
-	if ok, err := pubk.Verify(RecordDataForSig(entry), entry.GetSignature()); err != nil || !ok {
+	// Check signature
+	sigd, err := dataForSig(record.Value, record.Validity)
+	if err != nil {
+		return fmt.Errorf("Failed to marshall data for signature for path [%s]: %v", iprsKey, err)
+	}
+	if ok, err := pubk.Verify(sigd, record.Signature); err != nil || !ok {
 		return fmt.Errorf("Invalid record value. Not signed by private key corresponding to public key %v", pubk)
 	}
 
 	return nil
+}
+
+func init() {
+	VerificationSigPreparer[ld.VerificationType_Key] = prepareKeySig
 }

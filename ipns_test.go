@@ -5,23 +5,29 @@ import (
 	"testing"
 	"time"
 
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
+	vs "github.com/dirkmc/go-iprs/vs"
+	namesys "github.com/ipfs/go-ipfs/namesys"
 	path "github.com/ipfs/go-ipfs/path"
+	peer "gx/ipfs/QmXYjuNuxVzXKJCfWasQk1RqkhVLDM9jtUKhqc2WPQmFSB/go-libp2p-peer"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
-	namesys "github.com/ipfs/go-ipfs/namesys"
+	dstest "github.com/ipfs/go-ipfs/merkledag/test"
 	testutil "gx/ipfs/QmeDA8gNhvRTsbrjEieay5wezupJDiky8xvCzDABbsGzmp/go-testutil"
-	peer "gx/ipfs/QmXYjuNuxVzXKJCfWasQk1RqkhVLDM9jtUKhqc2WPQmFSB/go-libp2p-peer"
-	vs "github.com/dirkmc/go-iprs/vs"
+	// gologging "gx/ipfs/QmQvJiADDe7JR4m968MwXobTCCzUqQkP87aRHe29MEBGHV/go-logging"
+	// logging "gx/ipfs/QmSpJByNKFX1sCsHBEp3R73FL4NF6FnQTEGyNAXHm2GS52/go-log"
 )
 
 func TestIpnsResolve(t *testing.T) {
+	// logging.SetAllLoggers(gologging.DEBUG)
 	ctx := context.Background()
+	dag := dstest.Mock()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
 	r := vs.NewMockValueStore(context.Background(), id, dstore)
 	kvstore := vs.NewKadValueStore(dstore, r)
 	ns := namesys.NewNameSystem(r, dstore, 0)
-	rs := NewRecordSystem(kvstore, 0)
+	rs := NewRecordSystem(kvstore, dag, 0)
 
 	pk, pubk, err := testutil.RandTestKeyPair(512)
 	if err != nil {
@@ -42,12 +48,16 @@ func TestIpnsResolve(t *testing.T) {
 	}
 
 	// Retrieve the IPNS record value using IPRS
-	res, err := rs.Resolve(context.Background(), "/ipns/" + pid.Pretty())
+	res, _, err := rs.Resolve(context.Background(), "/ipns/"+pid.Pretty())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if res != p {
+	pcid, err := cid.Parse(p.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.Cid.Equals(pcid) {
 		t.Fatal("Got back incorrect value")
 	}
 }

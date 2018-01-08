@@ -2,14 +2,13 @@ package iprs_resolver
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"strings"
 
-	path "github.com/ipfs/go-ipfs/path"
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 	isd "gx/ipfs/QmZmmuAXgX73UQmX1jRKjTGmjzq24Jinqkq8vzkBtno4uX/go-is-domain"
-	u "github.com/ipfs/go-ipfs-util"
+	path "github.com/ipfs/go-ipfs/path"
 )
 
 type LookupTXTFunc func(name string) (txt []string, err error)
@@ -23,38 +22,21 @@ type DNSResolver struct {
 
 // NewDNSResolver constructs a name resolver using DNS TXT records.
 func NewDNSResolver() *DNSResolver {
-	return &DNSResolver{lookupTXT: net.LookupTXT}
+	return &DNSResolver{net.LookupTXT}
 }
-
+/*
 // newDNSResolver constructs a name resolver using DNS TXT records,
 // returning a Lookup instead of NewDNSResolver's Resolver.
 func newDNSResolver() Lookup {
-	return &DNSResolver{lookupTXT: net.LookupTXT}
-}
-
-// Resolve implements Resolver.
-func (r *DNSResolver) Resolve(ctx context.Context, name string) (path.Path, error) {
-	return r.ResolveN(ctx, name, DefaultDepthLimit)
-}
-
-// ResolveN implements Resolver.
-func (r *DNSResolver) ResolveN(ctx context.Context, name string, depth int) (path.Path, error) {
-	return Resolve(ctx, r, name, depth)
-}
+	return &DNSResolver{net.LookupTXT}
+}*/
 
 type lookupRes struct {
 	path  string
 	error error
 }
 
-// ResolveOnce implements Lookup.
-// TXT records for a given domain name should contain a b58
-// encoded multihash.
-func (r *DNSResolver) ResolveOnce(ctx context.Context, name string) (string, error) {
-	name = removePathPrefix(name)
-	segments := strings.SplitN(name, "/", 2)
-	domain := segments[0]
-
+func (r *DNSResolver) Resolve(ctx context.Context, domain string) (string, error) {
 	if !isd.IsDomain(domain) {
 		return "", fmt.Errorf("Not a valid domain name: [%s]", domain)
 	}
@@ -73,26 +55,21 @@ func (r *DNSResolver) ResolveOnce(ctx context.Context, name string) (string, err
 		return "", ctx.Err()
 	}
 
-	var p string
 	if subRes.error == nil {
-		p = subRes.path
-	} else {
-		var rootRes lookupRes
-		select {
-		case rootRes = <-rootChan:
-		case <-ctx.Done():
-			return "", ctx.Err()
-		}
-		if rootRes.error == nil {
-			p = rootRes.path
-		} else {
-			return "", ErrResolveFailed
-		}
+		return subRes.path, nil
 	}
-	if len(segments) > 1 {
-		return strings.TrimRight(p, "/") + "/" + segments[1], nil
+
+	var rootRes lookupRes
+	select {
+	case rootRes = <-rootChan:
+	case <-ctx.Done():
+		return "", ctx.Err()
 	}
-	return p, nil
+	if rootRes.error == nil {
+		return rootRes.path, nil
+	}
+
+	return "", ErrResolveFailed
 }
 
 func workDomain(r *DNSResolver, name string, res chan lookupRes) {
@@ -129,7 +106,7 @@ func parseEntry(txt string) (string, error) {
 	return tryParseDnsLink(txt)
 }
 
-// Parse ipfs/ipns/iprs links of the form
+// Parse links of the form
 // dnslink=/ipfs/somepath
 func tryParseDnsLink(txt string) (string, error) {
 	parts := strings.SplitN(txt, "=", 2)
@@ -146,12 +123,12 @@ func tryParseDnsLink(txt string) (string, error) {
 		}
 	}
 
-	return "", errors.New("Not a valid dnslink entry")
+	return "", fmt.Errorf("Not a valid dnslink entry: %s", txt)
 }
 
 // Must be of the form
-// /iprs/<hash>/somepath
-// /iprs/www.example.com/somepath
+// /iprs/<cid>
+// /iprs/www.example.com
 func isIprsPath(txt string) bool {
 	parts := strings.Split(txt, "/")
 
@@ -170,5 +147,9 @@ func isIprsPath(txt string) bool {
 	if parts[2] == "" {
 		return false
 	}
-	return u.IsValidHash(parts[2]) || isd.IsDomain(parts[2])
+	if isd.IsDomain(parts[2]) {
+		return true
+	}
+	_, err := cid.Parse(parts[2])
+	return err != nil
 }

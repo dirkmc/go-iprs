@@ -4,16 +4,20 @@ import (
 	"errors"
 	"math"
 
-	blocks "github.com/ipfs/go-block-format"
-	cid "github.com/ipfs/go-cid"
-	node "github.com/ipfs/go-ipld-format"
-	cborld "github.com/ipfs/go-ipld-cbor"
+	node "gx/ipfs/QmNwUEK7QbwSqyKBu3mMtToo8SUc6wQJ7gdZq4gGGJqfnf/go-ipld-format"
+	blocks "gx/ipfs/QmYsEQydGrsxNZfAiskvQ76N2xE9hDQtSAkRSynwMiUK3c/go-block-format"
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
+	cborld "gx/ipfs/QmeZv9VXw2SfVbX55LV6kGTWASKBc9ZxAVqGBeJcDGdoXy/go-ipld-cbor"
 )
+
+const Version = 1
 
 // TODO: Add to https://github.com/ipfs/go-cid/blob/master/cid.go
 const CodecIprsCbor = 0xd0
+const CodecIpns = 0xd8
 
 type IprsVerificationType uint64
+
 const (
 	// Key verification verifies a record is signed with a private key
 	VerificationType_Key IprsVerificationType = iota
@@ -22,6 +26,7 @@ const (
 )
 
 type IprsValidationType uint64
+
 const (
 	// Setting an EOL says "this record is valid until..."
 	ValidationType_EOL IprsValidationType = iota
@@ -30,47 +35,45 @@ const (
 )
 
 type Validity struct {
-	Sequence uint64
 	VerificationType IprsVerificationType
-	Verification interface{}
-	ValidationType IprsValidationType
-	Validation interface{}
+	Verification     interface{}
+	ValidationType   IprsValidationType
+	Validation       interface{}
 }
 
 func (v *Validity) Map() map[string]interface{} {
 	return map[string]interface{}{
-		"sequence": v.Sequence,
 		"verificationType": v.VerificationType,
-		"verification": v.Verification,
-		"validationType": v.ValidationType,
-		"validation": v.Validation,
+		"verification":     v.Verification,
+		"validationType":   v.ValidationType,
+		"validation":       v.Validation,
 	}
 }
 
 type Node struct {
 	cborld.Node
 
-	Version uint64
-	Value *cid.Cid
-	Validity *Validity
+	Version   uint64
+	Value     *cid.Cid
+	Validity  *Validity
 	Signature []byte
 }
 
 func (n *Node) Loggable() map[string]interface{} {
 	return map[string]interface{}{
 		"node_type": "iprs",
-		"cid": n.Cid(),
+		"cid":       n.Cid(),
 	}
 }
 
 var _ node.Node = (*Node)(nil)
 
-func NewNode(value *cid.Cid, validity *Validity, signature []byte) (*Node, error) {
+func NewIprsNode(value *cid.Cid, validity *Validity, signature []byte) (*Node, error) {
 	// Store the fields as a CBOR map
 	obj := map[string]interface{}{
-		"version": 0,
-		"value": value,
-		"validity": validity.Map(),
+		"version":   Version,
+		"value":     value,
+		"validity":  validity.Map(),
 		"signature": signature,
 	}
 
@@ -80,15 +83,15 @@ func NewNode(value *cid.Cid, validity *Validity, signature []byte) (*Node, error
 	}
 
 	return &Node{
-		Version: 0,
-		Node: *n,
-		Value: value,
-		Validity: validity,
+		Version:   Version,
+		Node:      *n,
+		Value:     value,
+		Validity:  validity,
 		Signature: signature,
 	}, nil
 }
 
-func DecodeIprsBlock(block blocks.Block) (node.Node, error) {
+func DecodeIprsBlock(block blocks.Block) (*Node, error) {
 	// Decode the block from CBOR format
 	n, err := ipldCborNodeFromBlock(block)
 	if err != nil {
@@ -109,11 +112,6 @@ func DecodeIprsBlock(block blocks.Block) (node.Node, error) {
 	if err != nil {
 		return nil, errors.New("incorrectly formatted validity")
 	}
-	seqi, _, err := n.Resolve([]string{"validity", "sequence"})
-	seq, ok := seqi.(uint64)
-	if err != nil || !ok {
-		return nil, errors.New("incorrectly formatted sequence number")
-	}
 	vfti, _, err := n.Resolve([]string{"validity", "verificationType"})
 	vft, ok := vfti.(uint64)
 	if err != nil || !ok {
@@ -133,21 +131,25 @@ func DecodeIprsBlock(block blocks.Block) (node.Node, error) {
 	}
 
 	return &Node{
-		Node: *n,
+		Node:    *n,
 		Version: version,
-		Value: vall.Cid,
+		Value:   vall.Cid,
 		Validity: &Validity{
-			Sequence: seq,
 			VerificationType: IprsVerificationType(vft),
-			Verification: verificationi,
-			ValidationType: IprsValidationType(vlt),
-			Validation: validationi,
+			Verification:     verificationi,
+			ValidationType:   IprsValidationType(vlt),
+			Validation:       validationi,
 		},
 		Signature: sig,
 	}, nil
 }
 
-var _ node.DecodeBlockFunc = DecodeIprsBlock
+// Used by IPLD's block decoder to decode blocks into generic IPLD nodes
+func DecodeIprsBlockGenericNode(block blocks.Block) (node.Node, error) {
+	return DecodeIprsBlock(block)
+}
+
+var _ node.DecodeBlockFunc = DecodeIprsBlockGenericNode
 
 func ipldCborNodeWithCodec(codec uint64, obj map[string]interface{}) (*cborld.Node, error) {
 	nd, err := cborld.WrapObject(obj, math.MaxUint64, -1)
@@ -178,4 +180,8 @@ func ipldCborNodeFromBlock(block blocks.Block) (*cborld.Node, error) {
 	}
 
 	return n, nil
+}
+
+func init() {
+	node.Register(CodecIprsCbor, DecodeIprsBlockGenericNode)
 }

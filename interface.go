@@ -31,9 +31,9 @@ package iprs
 
 import (
 	context "context"
-	rsp "github.com/dirkmc/go-iprs/path"
+	node "gx/ipfs/QmNwUEK7QbwSqyKBu3mMtToo8SUc6wQJ7gdZq4gGGJqfnf/go-ipld-format"
 	r "github.com/dirkmc/go-iprs/record"
-	path "github.com/ipfs/go-ipfs/path"
+	rsp "github.com/dirkmc/go-iprs/path"
 )
 
 // RecordSystem represents a cohesive record publishing and resolving system.
@@ -65,7 +65,7 @@ type Resolver interface {
 	// There is a default depth-limit to avoid infinite recursion.  Most
 	// users will be fine with this default limit, but if you need to
 	// adjust the limit you can use ResolveN.
-	Resolve(ctx context.Context, name string) (value path.Path, err error)
+	Resolve(ctx context.Context, name string) (*node.Link, []string, error)
 
 	// ResolveN performs a recursive lookup, returning the dereferenced
 	// path.  The only difference from Resolve is that the depth limit
@@ -74,7 +74,7 @@ type Resolver interface {
 	//
 	// Most users should use Resolve, since the default limit works well
 	// in most real-world situations.
-	ResolveN(ctx context.Context, name string, depth int) (value path.Path, err error)
+	ResolveN(ctx context.Context, name string, depth int) (*node.Link, []string, error)
 }
 
 // Publisher is an object capable of publishing a Record

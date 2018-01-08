@@ -2,25 +2,28 @@ package iprs_record
 
 import (
 	"context"
-	rsp "github.com/dirkmc/go-iprs/path"
-	u "github.com/ipfs/go-ipfs-util"
-	routing "gx/ipfs/QmPCGUjMRuBcPybZFpjhzpifwPP9wPRoiy5geTQKU4vqWA/go-libp2p-routing"
-	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
+	"fmt"
 	"time"
+
+	ld "github.com/dirkmc/go-iprs/ipld"
+	node "gx/ipfs/QmNwUEK7QbwSqyKBu3mMtToo8SUc6wQJ7gdZq4gGGJqfnf/go-ipld-format"
+	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
+	// u "github.com/ipfs/go-ipfs-util"
 )
 
-const PublicKeyPutTimeout = time.Second * 10
+//const PublicKeyPutTimeout = time.Second * 10
+const PubKeyFetchTimeout = time.Second * 10
 
 type PublicKeyManager struct {
-	routing routing.ValueStore
+	dag node.NodeGetter
 }
 
-func NewPublicKeyManager(r routing.ValueStore) *PublicKeyManager {
-	return &PublicKeyManager{
-		routing: r,
-	}
+func NewPublicKeyManager(dag node.NodeGetter) *PublicKeyManager {
+	return &PublicKeyManager{dag}
 }
 
+/*
 func (m *PublicKeyManager) PutPublicKey(ctx context.Context, pubk ci.PubKey) error {
 	pubkBytes, err := pubk.Bytes()
 	if err != nil {
@@ -41,23 +44,29 @@ func (m *PublicKeyManager) PutPublicKey(ctx context.Context, pubk ci.PubKey) err
 
 	return nil
 }
+*/
+func (m *PublicKeyManager) GetPublicKey(ctx context.Context, pubkCid *cid.Cid) (ci.PubKey, error) {
+	log.Debugf("PublicKeyManager get public key %s", pubkCid)
+	if pubkCid.Type() != ld.CodecPubKeyRaw {
+		return nil, fmt.Errorf("Cid Codec %d is not CodecPubKeyRaw in Cid %s", ld.CodecPubKeyRaw, pubkCid)
+	}
 
-func (m *PublicKeyManager) GetPublicKey(ctx context.Context, iprsKey rsp.IprsPath) (ci.PubKey, error) {
-	pkHash := iprsKey.GetHash()
-	pubk, err := routing.GetPublicKey(m.routing, ctx, pkHash)
+	log.Debugf("Fetching public key at %s", pubkCid)
+
+	timectx, cancel := context.WithTimeout(ctx, PubKeyFetchTimeout)
+	defer cancel()
+
+	n, err := m.dag.Get(timectx, pubkCid)
 	if err != nil {
-		log.Warningf("Failed to get public key %s", string(pkHash))
+		log.Warningf("Failed to fetch public key at %s: %s", pubkCid, err)
+		return nil, err
+	}
+
+	pubk, err := ci.UnmarshalPublicKey(n.RawData())
+	if err != nil {
+		log.Warningf("Failed to unmarshal public key at %s: %s", pubkCid, err)
 		return nil, err
 	}
 
 	return pubk, nil
-}
-
-func GetPublicKeyHash(pubk ci.PubKey) (string, error) {
-	pubkBytes, err := pubk.Bytes()
-	if err != nil {
-		return "", err
-	}
-
-	return u.Hash(pubkBytes).B58String(), nil
 }

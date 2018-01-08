@@ -5,30 +5,28 @@ import (
 	"sort"
 	"testing"
 
-	blocks "github.com/ipfs/go-block-format"
-	cid "github.com/ipfs/go-cid"
-	node "github.com/ipfs/go-ipld-format"
-	u "github.com/ipfs/go-ipfs-util"
+	node "gx/ipfs/QmNwUEK7QbwSqyKBu3mMtToo8SUc6wQJ7gdZq4gGGJqfnf/go-ipld-format"
+	u "gx/ipfs/QmPsAfmDBnZN3kZGSuNwvCNDZiHneERSKmRcFyG3UkvcT3/go-ipfs-util"
+	blocks "gx/ipfs/QmYsEQydGrsxNZfAiskvQ76N2xE9hDQtSAkRSynwMiUK3c/go-block-format"
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 )
 
 func TestMarshalIprsNodeRoundtrip(t *testing.T) {
-	seq := uint64(0)
 	valueCid := cid.NewCidV0(u.Hash([]byte("value")))
 	vft := VerificationType_Key
 	verification := map[string]*cid.Cid{"mycid": cid.NewCidV0(u.Hash([]byte("value")))}
 	vlt := ValidationType_EOL
 	validation := []byte("validation")
 	validity := &Validity{
-		Sequence: seq,
 		VerificationType: vft,
-		Verification: verification,
-		ValidationType: vlt,
-		Validation: validation,
+		Verification:     verification,
+		ValidationType:   vlt,
+		Validation:       validation,
 	}
 	signature := []byte("sig")
 
 	// 1. Newly constructed Node
-	o, err := NewNode(valueCid, validity, signature)
+	o, err := NewIprsNode(valueCid, validity, signature)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,17 +76,8 @@ func TestMarshalIprsNodeRoundtrip(t *testing.T) {
 		if err != nil || !ok {
 			t.Fatal("incorrectly formatted version")
 		}
-		if IprsVerificationType(versionr) != 0 {
-			t.Fatalf("sequence is %d, expected %d", versionr, 0)
-		}
-
-		seqi, _, err := n.Resolve([]string{"validity", "sequence"})
-		seqr, ok := seqi.(uint64)
-		if err != nil || !ok {
-			t.Fatal("incorrectly formatted sequence")
-		}
-		if seqr != seq {
-			t.Fatalf("sequence is %d, expected %d", seqr, seq)
+		if IprsVerificationType(versionr) != 1 {
+			t.Fatalf("version is %d, expected %d", versionr, 1)
 		}
 
 		vfti, _, err := n.Resolve([]string{"validity", "verificationType"})
@@ -117,7 +106,7 @@ func TestMarshalIprsNodeRoundtrip(t *testing.T) {
 		if IprsValidationType(vltr) != vlt {
 			t.Fatalf("validationType is %d, expected %d", vltr, vlt)
 		}
-		
+
 		validationi, _, err := n.Resolve([]string{"validity", "validation"})
 		vld, ok := validationi.([]byte)
 		if err != nil || !ok {
@@ -140,7 +129,6 @@ func TestMarshalIprsNodeRoundtrip(t *testing.T) {
 			"version",
 			"value",
 			"validity",
-			"validity/sequence",
 			"validity/verificationType",
 			"validity/verification",
 			"validity/verification/mycid",
@@ -157,7 +145,6 @@ func TestMarshalIprsNodeRoundtrip(t *testing.T) {
 		}
 
 		validityFull := []string{
-			"sequence",
 			"verificationType",
 			"verification",
 			"verification/mycid",
@@ -166,7 +153,6 @@ func TestMarshalIprsNodeRoundtrip(t *testing.T) {
 		}
 
 		validityTop := []string{
-			"sequence",
 			"verificationType",
 			"verification",
 			"validationType",

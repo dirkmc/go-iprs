@@ -4,10 +4,13 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
-	u "github.com/ipfs/go-ipfs-util"
-	logging "github.com/ipfs/go-log"
-	routing "gx/ipfs/QmPCGUjMRuBcPybZFpjhzpifwPP9wPRoiy5geTQKU4vqWA/go-libp2p-routing"
 	"time"
+
+	ld "github.com/dirkmc/go-iprs/ipld"
+	node "gx/ipfs/QmNwUEK7QbwSqyKBu3mMtToo8SUc6wQJ7gdZq4gGGJqfnf/go-ipld-format"
+	logging "gx/ipfs/QmSpJByNKFX1sCsHBEp3R73FL4NF6FnQTEGyNAXHm2GS52/go-log"
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
+	//u "github.com/ipfs/go-ipfs-util"
 )
 
 const CertType = "cert"
@@ -19,15 +22,14 @@ const CertPutTimeout = time.Second * 10
 var log = logging.Logger("iprs.cert")
 
 type CertificateManager struct {
-	routing routing.ValueStore
+	dag node.NodeGetter
 }
 
-func NewCertificateManager(r routing.ValueStore) *CertificateManager {
-	return &CertificateManager{
-		routing: r,
-	}
+func NewCertificateManager(dag node.NodeGetter) *CertificateManager {
+	return &CertificateManager{dag}
 }
 
+/*
 func GetCertPath(certHash string) string {
 	return certPrefix + certHash
 }
@@ -38,7 +40,7 @@ func (m *CertificateManager) PutCertificate(ctx context.Context, cert *x509.Cert
 		log.Warningf("Failed to marshall certificate: %s", err)
 		return "", err
 	}
-	
+
 	certHash := getCertificateHashFromBytes(pemBytes)
 	certKey := GetCertPath(certHash)
 	log.Debugf("Putting certificate at %s", certKey)
@@ -52,28 +54,27 @@ func (m *CertificateManager) PutCertificate(ctx context.Context, cert *x509.Cert
 	}
 	return certHash, nil
 }
-
-func (m *CertificateManager) GetCertificate(ctx context.Context, certHash string) (*x509.Certificate, error) {
-	log.Debugf("CertificateManager get certificate %s", certHash)
-	if !u.IsValidHash(certHash) {
-		return nil, fmt.Errorf("Bad certificate hash: [%s]", certHash)
+*/
+func (m *CertificateManager) GetCertificate(ctx context.Context, certCid *cid.Cid) (*x509.Certificate, error) {
+	log.Debugf("CertificateManager get certificate %s", certCid)
+	if certCid.Type() != ld.CodecCertRaw {
+		return nil, fmt.Errorf("Cid Codec %d is not CodecCertRaw in Cid %s", ld.CodecCertRaw, certCid)
 	}
 
-	certKey := GetCertPath(certHash)
-	log.Debugf("Fetching certificate at %s", certKey)
+	log.Debugf("Fetching certificate at %s", certCid)
 
 	timectx, cancel := context.WithTimeout(ctx, CertFetchTimeout)
 	defer cancel()
 
-	val, err := m.routing.GetValue(timectx, certKey)
+	n, err := m.dag.Get(timectx, certCid)
 	if err != nil {
-		log.Warningf("Failed to fetch certificate at %s: %s", certKey, err)
+		log.Warningf("Failed to fetch certificate at %s: %s", certCid, err)
 		return nil, err
 	}
 
-	cert, err := UnmarshalCertificate(val)
+	cert, err := UnmarshalCertificate(n.RawData())
 	if err != nil {
-		log.Warningf("Failed to unmarshal certificate at %s: %s", certKey, err)
+		log.Warningf("Failed to unmarshal certificate at %s: %s", certCid, err)
 		return nil, err
 	}
 

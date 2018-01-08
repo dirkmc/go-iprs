@@ -2,7 +2,7 @@ package iprs_cert
 
 import (
 	"fmt"
-	u "github.com/ipfs/go-ipfs-util"
+	u "gx/ipfs/QmPsAfmDBnZN3kZGSuNwvCNDZiHneERSKmRcFyG3UkvcT3/go-ipfs-util"
 	record "gx/ipfs/QmWGtsyPYEoiqTtWLpeUA2jpW4YSZgarKDD2zivYAFz7sR/go-libp2p-record"
 )
 

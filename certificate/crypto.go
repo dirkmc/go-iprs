@@ -2,15 +2,15 @@ package iprs_cert
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
-	u "github.com/ipfs/go-ipfs-util"
+	"errors"
+	"fmt"
+	u "gx/ipfs/QmPsAfmDBnZN3kZGSuNwvCNDZiHneERSKmRcFyG3UkvcT3/go-ipfs-util"
 )
 
 var CertificateIssuerError = errors.New("Signing certificate was not issued by specified issuing certificate")

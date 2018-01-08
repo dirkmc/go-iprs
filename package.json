@@ -6,12 +6,6 @@
   },
   "gxDependencies": [
     {
-      "author": "whyrusleeping",
-      "hash": "QmPN7cwmpcc4DWXb4KTB9dNAJgjuPY69h3npsMfhRrQL9c",
-      "name": "go-ipld-format",
-      "version": "0.5.1"
-    },
-    {
       "hash": "QmPCGUjMRuBcPybZFpjhzpifwPP9wPRoiy5geTQKU4vqWA",
       "name": "go-libp2p-routing",
       "version": "2.2.19"
@@ -54,9 +48,9 @@
     },
     {
       "author": "stebalien",
-      "hash": "QmSn9Td7xgxm9EV7iEjTckpUWmWApggzPxu7eFGWkkpwin",
+      "hash": "QmYsEQydGrsxNZfAiskvQ76N2xE9hDQtSAkRSynwMiUK3c",
       "name": "go-block-format",
-      "version": "0.1.4"
+      "version": "0.1.5"
     },
     {
       "hash": "QmSpJByNKFX1sCsHBEp3R73FL4NF6FnQTEGyNAXHm2GS52",
@@ -95,9 +89,9 @@
     },
     {
       "author": "whyrusleeping",
-      "hash": "QmWCs8kMecJwCPK8JThue8TjgM2ieJ2HjTLDu7Cv2NEmZi",
+      "hash": "QmeZv9VXw2SfVbX55LV6kGTWASKBc9ZxAVqGBeJcDGdoXy",
       "name": "go-ipld-cbor",
-      "version": "1.2.10"
+      "version": "1.2.11"
     },
     {
       "author": "why",
@@ -177,6 +171,11 @@
       "hash": "QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg",
       "name": "go-cid",
       "version": "0.7.19"
+    },
+    {
+      "hash": "QmNwUEK7QbwSqyKBu3mMtToo8SUc6wQJ7gdZq4gGGJqfnf",
+      "name": "go-ipld-format",
+      "version": "0.5.2"
     }
   ],
   "gxVersion": "0.12.1",

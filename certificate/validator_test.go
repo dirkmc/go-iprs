@@ -27,7 +27,7 @@ func TestCertificateValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	certPath := "/cert/" + certHash
-	
+
 	err = c.ValidateCertificateRecord(certPath, certBytes)
 	if err != nil {
 		t.Fatal(err)
@@ -43,12 +43,12 @@ func TestCertificateValidation(t *testing.T) {
 		t.Fatal("Failed to return error for key with bad hash")
 	}
 
-	err = c.ValidateCertificateRecord("/wrongprefix/" + certHash, certBytes)
+	err = c.ValidateCertificateRecord("/wrongprefix/"+certHash, certBytes)
 	if err == nil {
 		t.Fatal("Failed to return error for key with bad prefix")
 	}
 
-	err = c.ValidateCertificateRecord(certPath + "/blah", certBytes)
+	err = c.ValidateCertificateRecord(certPath+"/blah", certBytes)
 	if err == nil {
 		t.Fatal("Failed to return error for key with extraneous key path")
 	}

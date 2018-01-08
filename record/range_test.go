@@ -1,18 +1,18 @@
 package iprs_record
 
 import (
+	"context"
 	"testing"
 	"time"
-	path "github.com/ipfs/go-ipfs/path"
-	pb "github.com/dirkmc/go-iprs/pb"
-	u "github.com/ipfs/go-ipfs-util"
-	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
+
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 	rsp "github.com/dirkmc/go-iprs/path"
-	tu "github.com/dirkmc/go-iprs/test"
+	u "gx/ipfs/QmPsAfmDBnZN3kZGSuNwvCNDZiHneERSKmRcFyG3UkvcT3/go-ipfs-util"
+	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 )
 
-// This is just so we can get an IprsEntry for a given sequence number and timestamps
-func setupNewRangeRecordFunc(t *testing.T) (func(uint64, *time.Time, *time.Time) *pb.IprsEntry) {
+// Helper function to simplify creating a range record
+func setupNewRangeRecordFunc(t *testing.T) func(*time.Time, *time.Time, string) *Record {
 	// generate a key for signing the records
 	sr := u.NewSeededRand(15) // generate deterministic keypair
 	pk, _, err := ci.GenerateKeyPairWithReader(ci.RSA, 1024, sr)
@@ -20,41 +20,25 @@ func setupNewRangeRecordFunc(t *testing.T) (func(uint64, *time.Time, *time.Time)
 		t.Fatal(err)
 	}
 
-	f := NewRecordFactory(nil)
-
-	return func(seq uint64, start *time.Time, end *time.Time) *pb.IprsEntry {
-		r, err := f.NewRangeKeyRecord(path.Path("foo"), pk, start, end)
+	return func(start *time.Time, end *time.Time, p string) *Record {
+		c, err := cid.Parse(p)
 		if err != nil {
 			t.Fatal(err)
 		}
-		e, err := r.Entry(seq)
+		vl, err := NewRangeRecordValidation(start, end)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return e
+		s := NewKeyRecordSigner(pk)
+		r, err := NewRecord(vl, s, c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return r
 	}
 }
 
-// Simmilar to the above but just invoke the NewRecord function
-// and return the record / error
-func setupNewRangeRecordFuncWithError(t *testing.T) (func(uint64, *time.Time, *time.Time) (*Record, error)) {
-	// generate a key for signing the records
-	sr := u.NewSeededRand(15) // generate deterministic keypair
-	pk, _, err := ci.GenerateKeyPairWithReader(ci.RSA, 1024, sr)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	f := NewRecordFactory(nil)
-
-	return func(seq uint64, start *time.Time, end *time.Time) (*Record, error) {
-		return f.NewRangeKeyRecord(path.Path("foo"), pk, start, end)
-	}
-}
-
-func TestNewRangeRecord(t *testing.T) {
-	NewRecord := setupNewRangeRecordFuncWithError(t)
-
+func TestNewRangeRecordValidation(t *testing.T) {
 	var BeginningOfTime *time.Time
 	var EndOfTime *time.Time
 	ts := time.Now()
@@ -62,34 +46,34 @@ func TestNewRangeRecord(t *testing.T) {
 	OneHourAgo := ts.Add(time.Hour * -1)
 
 	// Start before end OK
-	_, err := NewRecord(1, &ts, &InOneHour)
+	_, err := NewRangeRecordValidation(&ts, &InOneHour)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = NewRecord(1, BeginningOfTime, &ts)
+	_, err = NewRangeRecordValidation(BeginningOfTime, &ts)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = NewRecord(1, &ts, EndOfTime)
+	_, err = NewRangeRecordValidation(&ts, EndOfTime)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = NewRecord(1, BeginningOfTime, EndOfTime)
+	_, err = NewRangeRecordValidation(BeginningOfTime, EndOfTime)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// End before start FAIL
-	_, err = NewRecord(1, &InOneHour, &OneHourAgo)
+	_, err = NewRangeRecordValidation(&InOneHour, &OneHourAgo)
 	if err == nil {
 		t.Fatal("Expected end before start error")
 	}
 
 	// Start equals end OK
-	_, err = NewRecord(1, &ts, &ts)
+	_, err = NewRangeRecordValidation(&ts, &ts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,46 +89,40 @@ func TestRangeOrdering(t *testing.T) {
 	InOneHour := ts.Add(time.Hour)
 	OneHourAgo := ts.Add(time.Hour * -1)
 	InTwoHours := ts.Add(time.Hour * 2)
-	InThreeHours := ts.Add(time.Hour * 3)
 
-	e1 := NewRecord(1, &ts, &InOneHour)
-	e2 := NewRecord(2, &ts, &InOneHour)
-	e3 := NewRecord(3, &ts, &InOneHour)
-	e4 := NewRecord(3, &ts, &InTwoHours)
-	e5 := NewRecord(4, &ts, &InThreeHours)
-	e6 := NewRecord(4, &OneHourAgo, &InThreeHours)
-	e7 := NewRecord(4, &OneHourAgo, EndOfTime)
-	e8 := NewRecord(4, BeginningOfTime, EndOfTime)
-	e9 := NewRecord(4, BeginningOfTime, EndOfTime)
+	p1 := "/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN"
+	p2 := "/ipfs/QmatmE9msSfkKxoffpHwNLNKgwZG8eT9Bud6YoPab52vpy"
 
-	// e1 is the only record, i hope it gets this right
-	assertRangeSelected(t, e1, e1)
-	// e2 has the highest sequence number
-	assertRangeSelected(t, e2, e1, e2)
-	// e3 has the highest sequence number
-	assertRangeSelected(t, e3, e1, e2, e3)
-	// e4 has a higher expiration
-	assertRangeSelected(t, e4, e1, e2, e3, e4)
-	// e5 has the highest sequence number
-	assertRangeSelected(t, e5, e1, e2, e3, e4, e5)
-	// e6 has the higest expiration and lowest start date
-	assertRangeSelected(t, e6, e1, e2, e3, e4, e5, e6)
-	// e7 has the higest expiration and lowest start date
-	assertRangeSelected(t, e7, e1, e2, e3, e4, e5, e6, e7)
-	// e8 has the higest expiration and lowest start date
-	assertRangeSelected(t, e8, e1, e2, e3, e4, e5, e6, e7, e8)
-	// e9 should be selected as its signature will win in the comparison
-	assertRangeSelected(t, e9, e1, e2, e3, e4, e5, e6, e7, e8, e9)
+	r1 := NewRecord(&ts, &InOneHour, p1)
+	r2 := NewRecord(&ts, &InTwoHours, p1)
+	r3 := NewRecord(&OneHourAgo, &InTwoHours, p1)
+	r4 := NewRecord(&OneHourAgo, EndOfTime, p1)
+	r5 := NewRecord(BeginningOfTime, EndOfTime, p1)
+	r6 := NewRecord(BeginningOfTime, EndOfTime, p2)
+
+	// r1 is the only record, I hope it gets this right
+	assertRangeSelected(t, r1, r1)
+	// r2 has a higher expiration
+	assertRangeSelected(t, r2, r1, r2)
+	// r3 has the highest expiration and lowest start date
+	assertRangeSelected(t, r3, r1, r2, r3)
+	// r4 has the highest expiration and lowest start date
+	assertRangeSelected(t, r4, r1, r2, r3, r4)
+	// r5 has the highest expiration and lowest start date
+	assertRangeSelected(t, r5, r1, r2, r3, r4, r5)
+	// r6 should be selected as its signature will win in the comparison
+	assertRangeSelected(t, r6, r1, r2, r3, r4, r5, r6)
 }
 
-func assertRangeSelected(t *testing.T, r *pb.IprsEntry, from ...*pb.IprsEntry) {
-	err := tu.AssertSelected(RangeRecordChecker.SelectRecord, r, from)
+func assertRangeSelected(t *testing.T, expected *Record, from ...*Record) {
+	err := AssertSelected(RangeRecordChecker.SelectRecord, expected, from)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestRangeValidation(t *testing.T) {
+	ctx := context.Background()
 	NewRecord := setupNewRangeRecordFunc(t)
 	ValidateRecord := RangeRecordChecker.ValidateRecord
 
@@ -156,51 +134,52 @@ func TestRangeValidation(t *testing.T) {
 	InTwoHours := ts.Add(time.Hour * 2)
 	InOneHour := ts.Add(time.Hour)
 
-	pendingA := NewRecord(1, &TwoHoursAgo, &OneHourAgo)
-	pendingB := NewRecord(1, BeginningOfTime, &OneHourAgo)
-	okA := NewRecord(1, &OneHourAgo, &InOneHour)
-	okB := NewRecord(1, BeginningOfTime, &InOneHour)
-	okC := NewRecord(1, &OneHourAgo, EndOfTime)
-	okD := NewRecord(1, BeginningOfTime, EndOfTime)
-	expiredA := NewRecord(1, &InOneHour, &InTwoHours)
-	expiredB := NewRecord(1, &InOneHour, EndOfTime)
+	p1 := "/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN"
+	pendingA := NewRecord(&TwoHoursAgo, &OneHourAgo, p1)
+	pendingB := NewRecord(BeginningOfTime, &OneHourAgo, p1)
+	okA := NewRecord(&OneHourAgo, &InOneHour, p1)
+	okB := NewRecord(BeginningOfTime, &InOneHour, p1)
+	okC := NewRecord(&OneHourAgo, EndOfTime, p1)
+	okD := NewRecord(BeginningOfTime, EndOfTime, p1)
+	expiredA := NewRecord(&InOneHour, &InTwoHours, p1)
+	expiredB := NewRecord(&InOneHour, EndOfTime, p1)
 
 	iprsKey, err := rsp.FromString("/iprs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = ValidateRecord(iprsKey, pendingA)
+	err = ValidateRecord(ctx, iprsKey, pendingA)
 	if err == nil {
 		t.Fatal("Expected pending error")
 	}
-	err = ValidateRecord(iprsKey, pendingB)
+	err = ValidateRecord(ctx, iprsKey, pendingB)
 	if err == nil {
 		t.Fatal("Expected pending error")
 	}
 
-	err = ValidateRecord(iprsKey, okA)
+	err = ValidateRecord(ctx, iprsKey, okA)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = ValidateRecord(iprsKey, okB)
+	err = ValidateRecord(ctx, iprsKey, okB)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = ValidateRecord(iprsKey, okC)
+	err = ValidateRecord(ctx, iprsKey, okC)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = ValidateRecord(iprsKey, okD)
+	err = ValidateRecord(ctx, iprsKey, okD)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = ValidateRecord(iprsKey, expiredA)
+	err = ValidateRecord(ctx, iprsKey, expiredA)
 	if err == nil {
 		t.Fatal("Expected expired error")
 	}
-	err = ValidateRecord(iprsKey, expiredB)
+	err = ValidateRecord(ctx, iprsKey, expiredB)
 	if err == nil {
 		t.Fatal("Expected expired error")
 	}

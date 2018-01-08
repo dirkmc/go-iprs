@@ -1,18 +1,18 @@
 package iprs_record
 
 import (
+	"context"
 	"testing"
 	"time"
-	path "github.com/ipfs/go-ipfs/path"
-	pb "github.com/dirkmc/go-iprs/pb"
-	u "github.com/ipfs/go-ipfs-util"
-	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
+
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 	rsp "github.com/dirkmc/go-iprs/path"
-	tu "github.com/dirkmc/go-iprs/test"
+	u "gx/ipfs/QmPsAfmDBnZN3kZGSuNwvCNDZiHneERSKmRcFyG3UkvcT3/go-ipfs-util"
+	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 )
 
-// This is just so we can get an IprsEntry for a given sequence number and timestamp
-func setupNewEolRecordFunc(t *testing.T) (func(uint64, time.Time) *pb.IprsEntry) {
+// Helper function to simplify creating an EOL record
+func setupNewEolRecordFunc(t *testing.T) func(time.Time, string) *Record {
 	// generate a key for signing the records
 	sr := u.NewSeededRand(15) // generate deterministic keypair
 	pk, _, err := ci.GenerateKeyPairWithReader(ci.RSA, 1024, sr)
@@ -20,14 +20,18 @@ func setupNewEolRecordFunc(t *testing.T) (func(uint64, time.Time) *pb.IprsEntry)
 		t.Fatal(err)
 	}
 
-	f := NewRecordFactory(nil)
-
-	return func(seq uint64, eol time.Time) *pb.IprsEntry {
-		e, err := f.NewEolKeyRecord(path.Path("foo"), pk, eol).Entry(seq)
+	return func(eol time.Time, p string) *Record {
+		c, err := cid.Parse(p)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return e
+		vl := NewEolRecordValidation(eol)
+		s := NewKeyRecordSigner(pk)
+		r, err := NewRecord(vl, s, c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return r
 	}
 }
 
@@ -37,35 +41,32 @@ func TestEolOrdering(t *testing.T) {
 	// select timestamp so selection is deterministic
 	ts := time.Unix(1000000, 0)
 
-	e1 := NewRecord(1, ts.Add(time.Hour))
-	e2 := NewRecord(2, ts.Add(time.Hour))
-	e3 := NewRecord(3, ts.Add(time.Hour))
-	e4 := NewRecord(3, ts.Add(time.Hour*2))
-	e5 := NewRecord(4, ts.Add(time.Hour*3))
-	e6 := NewRecord(4, ts.Add(time.Hour*3))
+	p1 := "/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN"
+	p2 := "/ipfs/QmatmE9msSfkKxoffpHwNLNKgwZG8eT9Bud6YoPab52vpy"
 
-	// e1 is the only record, i hope it gets this right
-	assertEolSelected(t, e1, e1)
-	// e2 has the highest sequence number
-	assertEolSelected(t, e2, e1, e2)
-	// e3 has the highest sequence number
-	assertEolSelected(t, e3, e1, e2, e3)
-	// e4 has a higher timeout
-	assertEolSelected(t, e4, e1, e2, e3, e4)
-	// e5 has the highest sequence number
-	assertEolSelected(t, e5, e1, e2, e3, e4, e5)
-	// e6 should be selected as its signauture will win in the comparison
-	assertEolSelected(t, e6, e1, e2, e3, e4, e5, e6)
+	r1 := NewRecord(ts.Add(time.Hour), p1)
+	r2 := NewRecord(ts.Add(time.Hour*2), p1)
+	r3 := NewRecord(ts.Add(time.Hour*2), p2)
+
+	// r1 is the only record, I hope it gets this right
+	assertEolSelected(t, r1, r1)
+
+	// r2 has a higher timeout
+	assertEolSelected(t, r2, r1, r2)
+
+	// e3 should be selected as its signature will win in the comparison
+	assertEolSelected(t, r3, r1, r2, r3)
 }
 
-func assertEolSelected(t *testing.T, r *pb.IprsEntry, from ...*pb.IprsEntry) {
-	err := tu.AssertSelected(EolRecordChecker.SelectRecord, r, from)
+func assertEolSelected(t *testing.T, expected *Record, from ...*Record) {
+	err := AssertSelected(EolRecordChecker.SelectRecord, expected, from)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestEolValidation(t *testing.T) {
+	ctx := context.Background()
 	NewRecord := setupNewEolRecordFunc(t)
 	ValidateRecord := EolRecordChecker.ValidateRecord
 	iprsKey, err := rsp.FromString("/iprs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5")
@@ -74,16 +75,17 @@ func TestEolValidation(t *testing.T) {
 	}
 
 	ts := time.Now()
+	p1 := "/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN"
 
-	e1 := NewRecord(1, ts.Add(time.Hour * -1))
-	e2 := NewRecord(1, ts.Add(time.Hour))
+	r1 := NewRecord(ts.Add(time.Hour*-1), p1)
+	r2 := NewRecord(ts.Add(time.Hour), p1)
 
-	err = ValidateRecord(iprsKey, e1)
+	err = ValidateRecord(ctx, iprsKey, r1)
 	if err == nil {
 		t.Fatal("Expected expired error")
 	}
 
-	err = ValidateRecord(iprsKey, e2)
+	err = ValidateRecord(ctx, iprsKey, r2)
 	if err != nil {
 		t.Fatal(err)
 	}

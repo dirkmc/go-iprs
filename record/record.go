@@ -4,144 +4,157 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	rsp "github.com/dirkmc/go-iprs/path"
-	pb "github.com/dirkmc/go-iprs/pb"
-	path "github.com/ipfs/go-ipfs/path"
-	logging "github.com/ipfs/go-log"
-	routing "gx/ipfs/QmPCGUjMRuBcPybZFpjhzpifwPP9wPRoiy5geTQKU4vqWA/go-libp2p-routing"
-	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
 	"time"
+
+	ld "github.com/dirkmc/go-iprs/ipld"
+	rsp "github.com/dirkmc/go-iprs/path"
+	node "gx/ipfs/QmNwUEK7QbwSqyKBu3mMtToo8SUc6wQJ7gdZq4gGGJqfnf/go-ipld-format"
+	logging "gx/ipfs/QmSpJByNKFX1sCsHBEp3R73FL4NF6FnQTEGyNAXHm2GS52/go-log"
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 )
 
 const PublishPutValTimeout = time.Second * 10
 
 var log = logging.Logger("iprs.record")
 
-type RecordValidity interface {
-	ValidityType() *pb.IprsEntry_ValidityType
-	// Return the validity data for the record
-	Validity() ([]byte, error)
+type RecordValidation interface {
+	ValidationType() ld.IprsValidationType
+	// Return the validation data for the record
+	Validation() (interface{}, error)
+	// Get any nodes of data required for validation
+	Nodes() ([]node.Node, error)
 }
 
 type RecordChecker interface {
 	// Validates that the record has not expired etc
-	ValidateRecord(iprsKey rsp.IprsPath, entry *pb.IprsEntry) error
+	ValidateRecord(ctx context.Context, iprsKey rsp.IprsPath, record *Record) error
 	// Selects the best (most valid) record
-	SelectRecord(recs []*pb.IprsEntry, vals [][]byte) (int, error)
+	SelectRecord(recs []*Record) (int, error)
 }
 
 type RecordSigner interface {
-	// Get the base IPRS path, eg /iprs/<certificate hash>
+	// Get the base IPRS path, eg /iprs/<certificate cid>
 	BasePath() (rsp.IprsPath, error)
-	VerificationType() *pb.IprsEntry_VerificationType
+	VerificationType() ld.IprsVerificationType
 	// Return the verification data for the record
-	Verification() ([]byte, error)
+	Verification() (interface{}, error)
+	// Get any nodes of data required for verification
+	// eg public key, certificate etc
+	Nodes() ([]node.Node, error)
 	// Publish any data required for verification to the network
 	// eg public key, certificate etc
-	PublishVerification(ctx context.Context, iprsKey rsp.IprsPath, entry *pb.IprsEntry) error
-	SignRecord(entry *pb.IprsEntry) error
+	//PublishVerification(ctx context.Context, iprsKey rsp.IprsPath, entry *pb.IprsEntry) error
+	SignRecord([]byte) ([]byte, error)
 }
 
 type RecordVerifier interface {
 	// Verifies cryptographic signatures etc
-	VerifyRecord(ctx context.Context, iprsKey rsp.IprsPath, entry *pb.IprsEntry) error
+	VerifyRecord(ctx context.Context, iprsKey rsp.IprsPath, record *Record) error
 }
 
 type Record struct {
-	routing routing.ValueStore
-	vl      RecordValidity
-	s       RecordSigner
-	val     path.Path
+	ld.Node
+	nodes []node.Node
 }
 
-func NewRecord(r routing.ValueStore, vl RecordValidity, s RecordSigner, val path.Path) *Record {
+type PrepareSig func(interface{}) ([]byte, error)
+type VfnSigPreparer map[ld.IprsVerificationType]PrepareSig
+
+func (s VfnSigPreparer) PrepareSig(t ld.IprsVerificationType, v interface{}) ([]byte, error) {
+	p, ok := s[t]
+	if !ok {
+		return nil, fmt.Errorf("Unrecognized verification type %d", t)
+	}
+	return p(v)
+}
+
+var VerificationSigPreparer = VfnSigPreparer(map[ld.IprsVerificationType]PrepareSig{})
+
+type VdnSigPreparer map[ld.IprsValidationType]PrepareSig
+
+func (s VdnSigPreparer) PrepareSig(t ld.IprsValidationType, v interface{}) ([]byte, error) {
+	p, ok := s[t]
+	if !ok {
+		return nil, fmt.Errorf("Unrecognized validation type %d", t)
+	}
+	return p(v)
+}
+
+var ValidationSigPreparer = VdnSigPreparer(map[ld.IprsValidationType]PrepareSig{})
+
+func NewRecord(vl RecordValidation, s RecordSigner, val *cid.Cid) (*Record, error) {
+	vfn, err := s.Verification()
+	if err != nil {
+		return nil, err
+	}
+	vdn, err := vl.Validation()
+	if err != nil {
+		return nil, err
+	}
+	validity := &ld.Validity{
+		VerificationType: s.VerificationType(),
+		Verification:     vfn,
+		ValidationType:   vl.ValidationType(),
+		Validation:       vdn,
+	}
+
+	signable, err := dataForSig(val, validity)
+	if err != nil {
+		return nil, err
+	}
+
+	sig, err := s.SignRecord(signable)
+	if err != nil {
+		return nil, err
+	}
+
+	n, err := ld.NewIprsNode(val, validity, sig)
+	if err != nil {
+		return nil, err
+	}
+
+	sb, err := s.Nodes()
+	if err != nil {
+		return nil, err
+	}
+	vb, err := vl.Nodes()
+	if err != nil {
+		return nil, err
+	}
+	nodes := append(sb, vb...)
+
 	return &Record{
-		routing: r,
-		vl:      vl,
-		s:       s,
-		val:     val,
+		Node:  *n,
+		nodes: nodes,
+	}, nil
+}
+
+func NewRecordFromNode(n *ld.Node) *Record {
+	return &Record{
+		Node:  *n,
+		nodes: []node.Node{},
 	}
 }
 
-func (r *Record) Entry(seq uint64) (*pb.IprsEntry, error) {
-	entry := new(pb.IprsEntry)
+func (r *Record) DependencyNodes() []node.Node {
+	return r.nodes
+}
 
-	validity, err := r.vl.Validity()
+func dataForSig(val *cid.Cid, v *ld.Validity) ([]byte, error) {
+	vfnb, err := VerificationSigPreparer.PrepareSig(v.VerificationType, v.Verification)
 	if err != nil {
 		return nil, err
 	}
-	verification, err := r.s.Verification()
-	if err != nil {
-		return nil, err
-	}
-
-	entry.Sequence = proto.Uint64(seq)
-	entry.Value = []byte(r.val)
-	entry.ValidityType = r.vl.ValidityType()
-	entry.Validity = validity
-	entry.VerificationType = r.s.VerificationType()
-	entry.Verification = verification
-
-	err = r.s.SignRecord(entry)
+	vdnb, err := ValidationSigPreparer.PrepareSig(v.ValidationType, v.Validation)
 	if err != nil {
 		return nil, err
 	}
 
-	return entry, nil
-}
-
-func (r *Record) BasePath() (rsp.IprsPath, error) {
-	return r.s.BasePath()
-}
-
-func (r *Record) Publish(ctx context.Context, iprsKey rsp.IprsPath, seq uint64) error {
-	// TODO: Check iprsKey is valid for this type of RecordSigner
-
-	entry, err := r.Entry(seq)
-	if err != nil {
-		return err
-	}
-
-	// Put the verification data and the record itself to routing
-	resp := make(chan error, 2)
-
-	go func() {
-		resp <- r.s.PublishVerification(ctx, iprsKey, entry)
-	}()
-	go func() {
-		resp <- r.putEntryToRouting(ctx, iprsKey, entry)
-	}()
-
-	for i := 0; i < 2; i++ {
-		err = <-resp
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (r *Record) putEntryToRouting(ctx context.Context, iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
-	data, err := proto.Marshal(entry)
-	if err != nil {
-		return err
-	}
-
-	timectx, cancel := context.WithTimeout(ctx, PublishPutValTimeout)
-	defer cancel()
-
-	log.Debugf("Storing iprs entry at %s", iprsKey)
-	return r.routing.PutValue(timectx, iprsKey.String(), data)
-}
-
-func RecordDataForSig(r *pb.IprsEntry) []byte {
 	return bytes.Join([][]byte{
-		r.Value,
-		[]byte(fmt.Sprint(r.GetValidityType())),
-		r.Validity,
-		[]byte(fmt.Sprint(r.GetVerificationType())),
-		r.Verification,
-	},
-		[]byte{})
+		val.Bytes(),
+		[]byte(fmt.Sprint(v.VerificationType)),
+		vfnb,
+		[]byte(fmt.Sprint(v.ValidationType)),
+		vdnb,
+	}, []byte{}), nil
 }

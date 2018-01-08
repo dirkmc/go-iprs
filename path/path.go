@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"path"
 	"strings"
-	mh "gx/ipfs/QmYeKnKpubCMRiq3PGZcTREErthbb5Q9cXsCoSkD9bjEBd/go-multihash"
-	u "github.com/ipfs/go-ipfs-util"
+
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
+	ld "github.com/dirkmc/go-iprs/ipld"
 )
 
 type IprsPath struct {
 	s string
+	c *cid.Cid
 }
 
 func (p IprsPath) String() string {
@@ -66,35 +68,36 @@ func (p IprsPath) IsIpns() bool {
 func FromString(txt string) (IprsPath, error) {
 	parts := strings.Split(txt, "/")
 	if len(parts) < 3 {
-		return IprsPath{""}, fmt.Errorf("Bad IPRS Path [%s]", txt)
+		return NilPath, fmt.Errorf("Bad IPRS Path [%s]", txt)
 	}
 
 	if parts[0] != "" || (parts[1] != "iprs" && parts[1] != "ipns") {
-		return IprsPath{""}, fmt.Errorf("Bad IPRS Path [%s]", txt)
+		return NilPath, fmt.Errorf("Bad IPRS Path [%s]", txt)
 	}
 
-	if parts[2] == "" || !u.IsValidHash(parts[2]) {
-		return IprsPath{""}, fmt.Errorf("Bad IPRS Path hash [%s] in [%s]", parts[2], txt)
-	}
-
-	if parts[1] == "ipns" && len(parts) > 3 {
-		return IprsPath{""}, fmt.Errorf("Bad IPRS Path [%s] IPNS path cannot have anything after the hash", txt)
-	}
-
-	return IprsPath{txt}, nil
-}
-
-func (p IprsPath) GetHashString() string {
-	parts := p.Segments()
-	return parts[1]
-}
-
-func (p IprsPath) GetHash() mh.Multihash {
-	h, err := mh.FromB58String(p.GetHashString())
+	c, err := cid.Decode(parts[2])
 	if err != nil {
-		panic(fmt.Sprintf("Could not parse hash from IPRS path %s", p))
+		return NilPath, fmt.Errorf("Bad IPRS Path hash [%s] in [%s]", parts[2], txt)
 	}
-	return h
+
+	return IprsPath{txt, c}, nil
+}
+
+func FromCid(c *cid.Cid) (IprsPath, error) {
+	if c.Type() != ld.CodecIprsCbor && c.Type() != ld.CodecIpns {
+		return NilPath, fmt.Errorf("Could not convert CID %s with codec %d to IPRS Path", c, c.Type())
+	}
+	p := "/iprs/"
+	if c.Type() == ld.CodecIpns {
+		p = "/ipns/"
+	}
+	p += c.String()
+
+	return FromString(p)
+}
+
+func (p IprsPath) Cid() *cid.Cid {
+	return p.c
 }
 
 //
@@ -119,4 +122,4 @@ func IsValid(txt string) bool {
 	return err == nil
 }
 
-var NilPath = IprsPath{""}
+var NilPath = IprsPath{}

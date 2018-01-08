@@ -1,19 +1,20 @@
-package iprs_record
+package iprs_record_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
+	rec "github.com/dirkmc/go-iprs/record"
+	psh "github.com/dirkmc/go-iprs/publisher"
 	rsp "github.com/dirkmc/go-iprs/path"
-	pb "github.com/dirkmc/go-iprs/pb"
-	u "github.com/ipfs/go-ipfs-util"
-	path "github.com/ipfs/go-ipfs/path"
-	mockrouting "github.com/ipfs/go-ipfs/routing/mock"
-	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
+	vs "github.com/dirkmc/go-iprs/vs"
+	u "gx/ipfs/QmPsAfmDBnZN3kZGSuNwvCNDZiHneERSKmRcFyG3UkvcT3/go-ipfs-util"
 	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
+	dstest "github.com/ipfs/go-ipfs/merkledag/test"
 	testutil "gx/ipfs/QmeDA8gNhvRTsbrjEieay5wezupJDiky8xvCzDABbsGzmp/go-testutil"
 	// gologging "github.com/whyrusleeping/go-logging"
 	// logging "github.com/ipfs/go-log"
@@ -21,33 +22,32 @@ import (
 
 func TestKeyRecordVerification(t *testing.T) {
 	ctx := context.Background()
+	dag := dstest.Mock()
+	id := testutil.RandIdentityOrFatal(t)
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
-	r := mockrouting.NewServer().ClientWithDatastore(ctx, testutil.RandIdentityOrFatal(t), dstore)
-	pubkManager := NewPublicKeyManager(r)
-	verifier := NewKeyRecordVerifier(pubkManager)
+	r := vs.NewMockValueStore(ctx, id, dstore)
+	pubkManager := rec.NewPublicKeyManager(dag)
+	verifier := rec.NewKeyRecordVerifier(pubkManager)
+	publisher := psh.NewDHTPublisher(r, dag)
 
-	// Simplifies creating a record and publishing it to routing
-	NewRecord := func() func(rsp.IprsPath, ci.PrivKey, uint64, time.Time) *pb.IprsEntry {
-		return func(iprsKey rsp.IprsPath, pk ci.PrivKey, seq uint64, eol time.Time) *pb.IprsEntry {
-			vl := NewEolRecordValidity(eol)
-			s := NewKeyRecordSigner(pubkManager, pk)
-			rec := NewRecord(r, vl, s, path.Path("foo"))
-			err := rec.Publish(ctx, iprsKey, seq)
-			if err != nil {
-				t.Fatal(err)
-			}
-			eBytes, err := r.GetValue(ctx, iprsKey.String())
-			if err != nil {
-				t.Fatal(err)
-			}
-			entry := new(pb.IprsEntry)
-			err = proto.Unmarshal(eBytes, entry)
-			if err != nil {
-				t.Fatal(err)
-			}
-			return entry
+	// Helper function to create a record and publish it to routing
+	var publishNewRecord = func(iprsKey rsp.IprsPath, pk ci.PrivKey, eol time.Time) *rec.Record {
+		c, err := cid.Parse("/ipfs/QmZULkCELmmk5XNfCgTnCyFgAVxBRBXyDHGGMVoLFLiXEN")
+		if err != nil {
+			t.Fatal(err)
 		}
-	}()
+		vl := rec.NewEolRecordValidation(eol)
+		s := rec.NewKeyRecordSigner(pk)
+		rec, err := rec.NewRecord(vl, s, c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = publisher.Publish(ctx, iprsKey, rec)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return rec
+	}
 
 	// Setup: Create some keys
 	sr := u.NewSeededRand(15) // generate deterministic keypair
@@ -62,33 +62,30 @@ func TestKeyRecordVerification(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Put the unrelated key onto the network
-	// so it's available to the verifier
-	err = pubkManager.PutPublicKey(ctx, otherpk.GetPublic())
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	// ****** Crypto Tests ****** //
 	ts := time.Now()
 
 	// Sign record with signature
 	iprsKey := getIprsPathFromKey(t, pk)
-	e1 := NewRecord(iprsKey, pk, 1, ts.Add(time.Hour))
+	r1 := publishNewRecord(iprsKey, pk, ts.Add(time.Hour))
 
-	// Record is valid if the iprs path points to the hash
+	// Record is valid if the iprs path points to the cid
 	// of the public key that signed the record
-	// /iprs/<public key hash>
-	err = verifier.VerifyRecord(ctx, iprsKey, e1)
+	// /iprs/<public key cid>
+	err = verifier.VerifyRecord(ctx, iprsKey, r1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Record is not valid if the key is a different hash
-	// (even though the unrelated hash is retrievable by the
-	// PublicKeyManager, ie it's available on the network)
+	// Publish unrelated record so that it's key is available
+	// on the network
 	unrelatedIprsKey := getIprsPathFromKey(t, otherpk)
-	err = verifier.VerifyRecord(ctx, unrelatedIprsKey, e1)
+	publishNewRecord(unrelatedIprsKey, otherpk, ts.Add(time.Hour))
+	
+	// Record is not valid if the key is a different cid
+	// (even though the unrelated cid is retrievable by the
+	// PublicKeyManager, ie it's available on the network)
+	err = verifier.VerifyRecord(ctx, unrelatedIprsKey, r1)
 	if err == nil {
 		t.Fatal("Failed to return error for verifification with different key")
 	}
@@ -98,14 +95,10 @@ func TestKeyRecordVerification(t *testing.T) {
 }
 
 func getIprsPathFromKey(t *testing.T, pk ci.PrivKey) rsp.IprsPath {
-	b, err := pk.GetPublic().Bytes()
+	s := rec.NewKeyRecordSigner(pk)
+	bp, err := s.BasePath()
 	if err != nil {
 		t.Fatal(err)
 	}
-	iprsKeyStr := "/iprs/" + u.Hash(b).B58String()
-	iprsKey, err := rsp.FromString(iprsKeyStr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return iprsKey
+	return bp
 }
