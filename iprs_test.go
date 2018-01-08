@@ -2,25 +2,26 @@ package iprs
 
 import (
 	"context"
-//	"fmt"
+	//	"fmt"
 	"testing"
 	"time"
 
-	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 	rec "github.com/dirkmc/go-iprs/record"
-//	rsv "github.com/dirkmc/go-iprs/resolver"
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
+	//	rsv "github.com/dirkmc/go-iprs/resolver"
 	tu "github.com/dirkmc/go-iprs/test"
 	vs "github.com/dirkmc/go-iprs/vs"
-//	path "github.com/ipfs/go-ipfs/path"
+	//	path "github.com/ipfs/go-ipfs/path"
+	dstest "github.com/ipfs/go-ipfs/merkledag/test"
 	u "gx/ipfs/QmPsAfmDBnZN3kZGSuNwvCNDZiHneERSKmRcFyG3UkvcT3/go-ipfs-util"
 	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
-	dstest "github.com/ipfs/go-ipfs/merkledag/test"
 	testutil "gx/ipfs/QmeDA8gNhvRTsbrjEieay5wezupJDiky8xvCzDABbsGzmp/go-testutil"
 	// gologging "gx/ipfs/QmQvJiADDe7JR4m968MwXobTCCzUqQkP87aRHe29MEBGHV/go-logging"
 	// logging "gx/ipfs/QmSpJByNKFX1sCsHBEp3R73FL4NF6FnQTEGyNAXHm2GS52/go-log"
 )
+
 /*
 type mockResolver struct {
 	entries map[string]string
@@ -218,7 +219,7 @@ func TestPublishAndResolveSharedKey(t *testing.T) {
 	}
 
 	// Retrieve the record value
-	res, p, err := rs.Resolve(ctx, iprsBasePath.String() + "/my/path")
+	res, p, err := rs.Resolve(ctx, iprsBasePath.String()+"/my/path")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,7 +237,7 @@ func TestPublishAndResolveSharedKey(t *testing.T) {
 	p2, err := cid.Parse("/ipfs/QmatmE9msSfkKxoffpHwNLNKgwZG8eT9Bud6YoPab52vpy")
 	if err != nil {
 		t.Fatal(err)
-	}	
+	}
 	eol = time.Now().Add(time.Minute * 10)
 	validation = rec.NewEolRecordValidation(eol)
 	signer = rec.NewCertRecordSigner(childCert, childPk)

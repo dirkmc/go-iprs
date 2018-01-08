@@ -4,13 +4,13 @@ import (
 	"context"
 	"time"
 
-	mdag "github.com/ipfs/go-ipfs/merkledag"
-	node "gx/ipfs/QmNwUEK7QbwSqyKBu3mMtToo8SUc6wQJ7gdZq4gGGJqfnf/go-ipld-format"
 	rsp "github.com/dirkmc/go-iprs/path"
 	psh "github.com/dirkmc/go-iprs/publisher"
 	r "github.com/dirkmc/go-iprs/record"
 	rsv "github.com/dirkmc/go-iprs/resolver"
 	vs "github.com/dirkmc/go-iprs/vs"
+	mdag "github.com/ipfs/go-ipfs/merkledag"
+	node "gx/ipfs/QmNwUEK7QbwSqyKBu3mMtToo8SUc6wQJ7gdZq4gGGJqfnf/go-ipld-format"
 	logging "gx/ipfs/QmSpJByNKFX1sCsHBEp3R73FL4NF6FnQTEGyNAXHm2GS52/go-log"
 )
 
@@ -29,7 +29,7 @@ const DefaultResolverCacheTTL = time.Minute
 //
 
 type mprs struct {
-	resolver *rsv.Resolver
+	resolver  *rsv.Resolver
 	publisher Publisher
 }
 

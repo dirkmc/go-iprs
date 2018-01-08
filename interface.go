@@ -31,9 +31,9 @@ package iprs
 
 import (
 	context "context"
-	node "gx/ipfs/QmNwUEK7QbwSqyKBu3mMtToo8SUc6wQJ7gdZq4gGGJqfnf/go-ipld-format"
-	r "github.com/dirkmc/go-iprs/record"
 	rsp "github.com/dirkmc/go-iprs/path"
+	r "github.com/dirkmc/go-iprs/record"
+	node "gx/ipfs/QmNwUEK7QbwSqyKBu3mMtToo8SUc6wQJ7gdZq4gGGJqfnf/go-ipld-format"
 )
 
 // RecordSystem represents a cohesive record publishing and resolving system.
