@@ -43,7 +43,7 @@ type Resolver struct {
 }
 
 func NewResolver(vstore routing.ValueStore, dag node.NodeGetter, cachesize int, ttl *time.Duration) *Resolver {
-	dns := NewDNSResolver()
+	dns := NewDNSResolver(cachesize, ttl)
 	iprs := NewIprsResolver(vstore, dag, cachesize, ttl)
 	ipns := NewIpnsResolver(vstore, cachesize, ttl)
 	return &Resolver{dns, iprs, ipns}

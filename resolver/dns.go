@@ -5,31 +5,34 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 
 	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 	isd "gx/ipfs/QmZmmuAXgX73UQmX1jRKjTGmjzq24Jinqkq8vzkBtno4uX/go-is-domain"
 	path "github.com/ipfs/go-ipfs/path"
 )
 
+const DefaultDnsCacheTTL = time.Minute
+
 type LookupTXTFunc func(name string) (txt []string, err error)
 
 // DNSResolver implements a Resolver on DNS domains
 type DNSResolver struct {
+	cache       *ResolverCache
 	lookupTXT LookupTXTFunc
-	// TODO: maybe some sort of caching?
-	// cache would need a timeout
 }
 
 // NewDNSResolver constructs a name resolver using DNS TXT records.
-func NewDNSResolver() *DNSResolver {
-	return &DNSResolver{net.LookupTXT}
+func NewDNSResolver(cachesize int, ttlp *time.Duration) *DNSResolver {
+	ttl := DefaultDnsCacheTTL
+	tp := &ttl
+	if ttlp != nil {
+		tp = &ttl
+	}
+	rs := DNSResolver{lookupTXT: net.LookupTXT}
+	rs.cache = NewResolverCache(&rs, cachesize, tp)
+	return &rs
 }
-/*
-// newDNSResolver constructs a name resolver using DNS TXT records,
-// returning a Lookup instead of NewDNSResolver's Resolver.
-func newDNSResolver() Lookup {
-	return &DNSResolver{net.LookupTXT}
-}*/
 
 type lookupRes struct {
 	path  string
@@ -37,9 +40,21 @@ type lookupRes struct {
 }
 
 func (r *DNSResolver) Resolve(ctx context.Context, domain string) (string, error) {
+	log.Debugf("IPRS Resolve %s", domain)
 	if !isd.IsDomain(domain) {
 		return "", fmt.Errorf("Not a valid domain name: [%s]", domain)
 	}
+
+	val, err := r.cache.GetValue(ctx, domain)
+	if err != nil {
+		log.Warningf("DnsResolver get failed for %s", domain)
+		return "", err
+	}
+
+	return string(val), nil
+}
+
+func (r *DNSResolver) GetValue(ctx context.Context, domain string) ([]byte, *time.Time, error) {
 	log.Debugf("DNSResolver resolving %s", domain)
 
 	rootChan := make(chan lookupRes, 1)
@@ -52,24 +67,24 @@ func (r *DNSResolver) Resolve(ctx context.Context, domain string) (string, error
 	select {
 	case subRes = <-subChan:
 	case <-ctx.Done():
-		return "", ctx.Err()
+		return nil, nil, ctx.Err()
 	}
 
 	if subRes.error == nil {
-		return subRes.path, nil
+		return []byte(subRes.path), nil, nil
 	}
 
 	var rootRes lookupRes
 	select {
 	case rootRes = <-rootChan:
 	case <-ctx.Done():
-		return "", ctx.Err()
+		return nil, nil, ctx.Err()
 	}
 	if rootRes.error == nil {
-		return rootRes.path, nil
+		return []byte(rootRes.path), nil, nil
 	}
 
-	return "", ErrResolveFailed
+	return nil, nil, ErrResolveFailed
 }
 
 func workDomain(r *DNSResolver, name string, res chan lookupRes) {
