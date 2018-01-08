@@ -101,11 +101,10 @@ func (r *IprsResolver) GetValue(ctx context.Context, k string) ([]byte, *time.Ti
 	return val, eol, nil
 }
 
-func (r *IprsResolver) checkValue([]byte) error {
-	// TODO:
-	// Value must be
-	// - /iprs/<cid>
-	return nil
+func (r *IprsResolver) checkValue(b []byte) error {
+	// The target must be a CID
+	_, err := cid.Parse(b)
+	return err
 }
 
 func (r *IprsResolver) getEol(record *rec.Record) *time.Time {

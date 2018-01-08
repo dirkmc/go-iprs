@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
+	isd "gx/ipfs/QmZmmuAXgX73UQmX1jRKjTGmjzq24Jinqkq8vzkBtno4uX/go-is-domain"
 	rsp "github.com/dirkmc/go-iprs/path"
 	nspb "github.com/ipfs/go-ipfs/namesys/pb"
 	routing "gx/ipfs/QmPCGUjMRuBcPybZFpjhzpifwPP9wPRoiy5geTQKU4vqWA/go-libp2p-routing"
@@ -113,13 +115,21 @@ func (r *IpnsResolver) GetValue(ctx context.Context, k string) ([]byte, *time.Ti
 	return val, eol, nil
 }
 
-func (r *IpnsResolver) checkValue([]byte) error {
-	// TODO:
-	// Value must be
-	// - /ipfs/<hash>
-	// - /ipns/<hash>
-	// - /ipns/<domain>
-	return nil
+func (r *IpnsResolver) checkValue(b []byte) error {
+	// If the target can be parsed to a CID then it's ok
+	_, err := rsp.ParseTargetToCid(b)
+	if err == nil {
+		return nil
+	}
+
+	// If the target can be parsed to a domain then it's also ok
+	// /ipns/<domain>
+	parts := strings.Split(string(b), "/")
+	if len(parts) > 2 && isd.IsDomain(parts[1]) {
+		return nil
+	}
+
+	return fmt.Errorf("target is not CID or domain name")
 }
 
 func (r *IpnsResolver) entryDataForSig(e *nspb.IpnsEntry) []byte {
