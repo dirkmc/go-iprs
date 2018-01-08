@@ -34,8 +34,7 @@ type mprs struct {
 }
 
 func NewRecordSystem(vstore vs.ValueStore, dag mdag.DAGService, cachesize int) RecordSystem {
-	cachedvs := vs.NewCachedValueStore(vstore, dag, cachesize, nil)
-	resolver := rsv.NewResolver(cachedvs)
+	resolver := rsv.NewResolver(vstore, dag, cachesize, nil)
 	publisher := psh.NewDHTPublisher(vstore, dag)
 	return &mprs{resolver, publisher}
 }

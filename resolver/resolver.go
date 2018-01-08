@@ -7,17 +7,15 @@ import (
 	"strings"
 	"time"
 
+	routing "gx/ipfs/QmPCGUjMRuBcPybZFpjhzpifwPP9wPRoiy5geTQKU4vqWA/go-libp2p-routing"
 	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 	isd "gx/ipfs/QmZmmuAXgX73UQmX1jRKjTGmjzq24Jinqkq8vzkBtno4uX/go-is-domain"
 	logging "gx/ipfs/QmSpJByNKFX1sCsHBEp3R73FL4NF6FnQTEGyNAXHm2GS52/go-log"
 	node "gx/ipfs/QmNwUEK7QbwSqyKBu3mMtToo8SUc6wQJ7gdZq4gGGJqfnf/go-ipld-format"
 	rsp "github.com/dirkmc/go-iprs/path"
-	vs "github.com/dirkmc/go-iprs/vs"
 )
 
 var log = logging.Logger("iprs.resolver")
-
-const DefaultResolverCacheTTL = time.Minute
 
 const (
 	// DefaultDepthLimit is the default depth limit used by Resolve.
@@ -40,13 +38,15 @@ var prefixes = []string{"/iprs/", "/ipns/"}
 
 type Resolver struct {
 	dns *DNSResolver
-	dht *DHTResolver
+	iprs *IprsResolver
+	ipns *IpnsResolver
 }
 
-func NewResolver(vstore *vs.CachedValueStore) *Resolver {
+func NewResolver(vstore routing.ValueStore, dag node.NodeGetter, cachesize int, ttl *time.Duration) *Resolver {
 	dns := NewDNSResolver()
-	dht := NewDHTResolver(vstore)
-	return &Resolver{dns, dht}
+	iprs := NewIprsResolver(vstore, dag, cachesize, ttl)
+	ipns := NewIpnsResolver(vstore, cachesize, ttl)
+	return &Resolver{dns, iprs, ipns}
 }
 
 // Recursively resolves a path, eg
@@ -86,7 +86,7 @@ func (r *Resolver) ResolveName(ctx context.Context, p string, depth int) (*cid.C
 
 	// If it's a domain name, resolve using DNS
 	name := removePathPrefix(p)
-	if(isd.IsDomain(name)) {
+	if isd.IsDomain(name) {
 		res, err := r.dns.Resolve(ctx, name)
 		if err != nil {
 			return nil, err
@@ -95,20 +95,29 @@ func (r *Resolver) ResolveName(ctx context.Context, p string, depth int) (*cid.C
 	}
 
 	// If it's an IPNS or IPRS path, resolve using the DHT
-	// TODO: Make it possible to resolve /ipns/<hash> => /ipns/example.com
 	iprsKey, err := rsp.FromString(p)
 	if err != nil {
 		return nil, err
 	}
 
-	c, err := r.dht.Resolve(ctx, iprsKey)
+	// IPNS
+	if iprsKey.IsIpns() {
+		res, err := r.ipns.Resolve(ctx, iprsKey)
+		if err != nil {
+			return nil, err
+		}
+		return r.ResolveName(ctx, res, depth -1)
+	}
+
+	// IPRS
+	c, err := r.iprs.Resolve(ctx, iprsKey)
 	if err != nil {
 		return nil, err
 	}
 
 	// If the CID is for an IPRS or IPNS node, recurse
 	k, err := rsp.FromCid(c)
-	if err == nil {
+	if err == nil { // IPRS/IPNS CID
 		return r.ResolveName(ctx, k.String(), depth - 1)
 	}
 

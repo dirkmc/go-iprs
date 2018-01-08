@@ -1,4 +1,4 @@
-package iprs_vs
+package iprs_resolver
 
 import (
 	"context"
@@ -9,13 +9,15 @@ import (
 	psh "github.com/dirkmc/go-iprs/publisher"
 	rsp "github.com/dirkmc/go-iprs/path"
 	rec "github.com/dirkmc/go-iprs/record"
+	vs "github.com/dirkmc/go-iprs/vs"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
 	dstest "github.com/ipfs/go-ipfs/merkledag/test"
+	routing "gx/ipfs/QmPCGUjMRuBcPybZFpjhzpifwPP9wPRoiy5geTQKU4vqWA/go-libp2p-routing"
 	testutil "gx/ipfs/QmeDA8gNhvRTsbrjEieay5wezupJDiky8xvCzDABbsGzmp/go-testutil"
 )
 
-func getEolRecord(t *testing.T, c *cid.Cid, ts time.Time, r ValueStore) (rsp.IprsPath, *rec.Record) {
+func getEolRecord(t *testing.T, c *cid.Cid, ts time.Time, r routing.ValueStore) (rsp.IprsPath, *rec.Record) {
 	pk, _, err := testutil.RandTestKeyPair(512)
 	if err != nil {
 		t.Fatal(err)
@@ -39,7 +41,7 @@ func TestCacheSizeZero(t *testing.T) {
 	dag := dstest.Mock()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
-	r := NewMockValueStore(context.Background(), id, dstore)
+	r := vs.NewMockValueStore(context.Background(), id, dstore)
 	publisher := psh.NewDHTPublisher(r, dag)
 
 	ts := time.Now().Add(time.Hour)
@@ -53,8 +55,8 @@ func TestCacheSizeZero(t *testing.T) {
 	publisher.Publish(ctx, iprsKey, eolRecord)
 
 	// Get the entry value (cache is size zero so it will be retrieved from routing)
-	vstore := NewCachedValueStore(r, dag, 0, nil)
-	res, err := vstore.GetValue(ctx, iprsKey)
+	rs := NewIprsResolver(r, dag, 0, nil)
+	res, err := rs.Resolve(ctx, iprsKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +72,7 @@ func TestCacheSizeZero(t *testing.T) {
 	}
 
 	// Get the entry value again
-	res, err = vstore.GetValue(ctx, iprsKey)
+	res, err = rs.Resolve(ctx, iprsKey)
 	if err == nil {
 		t.Fatal("Expected key not found error")
 	}
@@ -81,8 +83,8 @@ func TestCacheSizeTen(t *testing.T) {
 	dag := dstest.Mock()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
-	r := NewMockValueStore(context.Background(), id, dstore)
-	vstore := NewCachedValueStore(r, dag, 10, nil)
+	r := vs.NewMockValueStore(context.Background(), id, dstore)
+	rs := NewIprsResolver(r, dag, 10, nil)
 	publisher := psh.NewDHTPublisher(r, dag)
 
 	ts := time.Now().Add(time.Hour)
@@ -96,7 +98,7 @@ func TestCacheSizeTen(t *testing.T) {
 	publisher.Publish(ctx, iprsKey, eolRecord)
 
 	// Get the entry value
-	res, err := vstore.GetValue(ctx, iprsKey)
+	res, err := rs.Resolve(ctx, iprsKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +113,7 @@ func TestCacheSizeTen(t *testing.T) {
 	}
 
 	// Get the entry value again
-	res, err = vstore.GetValue(ctx, iprsKey)
+	res, err = rs.Resolve(ctx, iprsKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,8 +127,8 @@ func TestCacheEolExpired(t *testing.T) {
 	dag := dstest.Mock()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
-	r := NewMockValueStore(context.Background(), id, dstore)
-	vstore := NewCachedValueStore(r, dag, 10, nil)
+	r := vs.NewMockValueStore(context.Background(), id, dstore)
+	rs := NewIprsResolver(r, dag, 10, nil)
 	publisher := psh.NewDHTPublisher(r, dag)
 
 	ts := time.Now().Add(time.Millisecond * 100)
@@ -140,7 +142,7 @@ func TestCacheEolExpired(t *testing.T) {
 	publisher.Publish(ctx, iprsKey, eolRecord)
 
 	// Get the entry value
-	res, err := vstore.GetValue(ctx, iprsKey)
+	res, err := rs.Resolve(ctx, iprsKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +160,7 @@ func TestCacheEolExpired(t *testing.T) {
 	}
 
 	// Get the entry value again. Should have expired
-	res, err = vstore.GetValue(ctx, iprsKey)
+	res, err = rs.Resolve(ctx, iprsKey)
 	if err == nil {
 		t.Fatal("Expected key not found error")
 	}
@@ -169,8 +171,8 @@ func TestCacheTimeRangeExpired(t *testing.T) {
 	dag := dstest.Mock()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
-	r := NewMockValueStore(context.Background(), id, dstore)
-	vstore := NewCachedValueStore(r, dag, 10, nil)
+	r := vs.NewMockValueStore(context.Background(), id, dstore)
+	rs := NewIprsResolver(r, dag, 10, nil)
 	publisher := psh.NewDHTPublisher(r, dag)
 
 	pk, _, err := testutil.RandTestKeyPair(512)
@@ -202,7 +204,7 @@ func TestCacheTimeRangeExpired(t *testing.T) {
 	publisher.Publish(ctx, iprsKey, rangeRecord)
 
 	// Get the entry value
-	res, err := vstore.GetValue(ctx, iprsKey)
+	res, err := rs.Resolve(ctx, iprsKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +222,7 @@ func TestCacheTimeRangeExpired(t *testing.T) {
 	}
 
 	// Get the entry again. Should have expired
-	res, err = vstore.GetValue(ctx, iprsKey)
+	res, err = rs.Resolve(ctx, iprsKey)
 	if err == nil {
 		t.Fatal("Expected key not found error")
 	}
