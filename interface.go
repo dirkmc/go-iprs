@@ -81,13 +81,4 @@ type Resolver interface {
 type Publisher interface {
 	// Publish establishes a name-value mapping.
 	Publish(ctx context.Context, iprsKey rsp.IprsPath, record *r.Record) error
-	/*
-		// Publish establishes a name-value mapping.
-		// TODO make this not PrivKey specific.
-		Publish(ctx context.Context, name ci.PrivKey, value path.Path) error
-
-		// TODO: to be replaced by a more generic 'PublishWithValidity' type
-		// call once the records spec is implemented
-		PublishWithEOL(ctx context.Context, name ci.PrivKey, value path.Path, eol time.Time) error
-	*/
 }
