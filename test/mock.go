@@ -61,9 +61,6 @@ func (m *MockValueStore) PutValue(ctx context.Context, k string, d []byte) error
 }
 
 func (m *MockValueStore) GetLocalValue(ctx context.Context, k string) ([]byte, error) {
-	if m.mockEmptyLocalStore {
-		return nil, routing.ErrNotFound
-	}
 	return m.r.GetValue(ctx, k)
 }
 
@@ -89,8 +86,4 @@ func (m *MockValueStore) GetValues(ctx context.Context, k string, count int) ([]
 
 func (m *MockValueStore) DeleteValue(k string) error {
 	return m.dstore.Delete(dshelp.NewKeyFromBinary([]byte(k)))
-}
-
-func (m *MockValueStore) MockEmptyLocalStore() {
-	m.mockEmptyLocalStore = true
 }
