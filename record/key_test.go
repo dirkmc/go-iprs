@@ -9,7 +9,7 @@ import (
 	rec "github.com/dirkmc/go-iprs/record"
 	psh "github.com/dirkmc/go-iprs/publisher"
 	rsp "github.com/dirkmc/go-iprs/path"
-	vs "github.com/dirkmc/go-iprs/vs"
+	tu "github.com/dirkmc/go-iprs/test"
 	u "gx/ipfs/QmPsAfmDBnZN3kZGSuNwvCNDZiHneERSKmRcFyG3UkvcT3/go-ipfs-util"
 	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
@@ -25,7 +25,7 @@ func TestKeyRecordVerification(t *testing.T) {
 	dag := dstest.Mock()
 	id := testutil.RandIdentityOrFatal(t)
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
-	r := vs.NewMockValueStore(ctx, id, dstore)
+	r := tu.NewMockValueStore(ctx, id, dstore)
 	pubkManager := rec.NewPublicKeyManager(dag)
 	verifier := rec.NewKeyRecordVerifier(pubkManager)
 	publisher := psh.NewDHTPublisher(r, dag)

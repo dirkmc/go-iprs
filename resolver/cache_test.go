@@ -9,7 +9,7 @@ import (
 	psh "github.com/dirkmc/go-iprs/publisher"
 	rsp "github.com/dirkmc/go-iprs/path"
 	rec "github.com/dirkmc/go-iprs/record"
-	vs "github.com/dirkmc/go-iprs/vs"
+	tu "github.com/dirkmc/go-iprs/test"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
 	dstest "github.com/ipfs/go-ipfs/merkledag/test"
@@ -41,7 +41,7 @@ func TestCacheSizeZero(t *testing.T) {
 	dag := dstest.Mock()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
-	r := vs.NewMockValueStore(context.Background(), id, dstore)
+	r := tu.NewMockValueStore(context.Background(), id, dstore)
 	publisher := psh.NewDHTPublisher(r, dag)
 
 	ts := time.Now().Add(time.Hour)
@@ -83,7 +83,7 @@ func TestCacheSizeTen(t *testing.T) {
 	dag := dstest.Mock()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
-	r := vs.NewMockValueStore(context.Background(), id, dstore)
+	r := tu.NewMockValueStore(context.Background(), id, dstore)
 	rs := NewIprsResolver(r, dag, 10, nil)
 	publisher := psh.NewDHTPublisher(r, dag)
 
@@ -127,7 +127,7 @@ func TestCacheEolExpired(t *testing.T) {
 	dag := dstest.Mock()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
-	r := vs.NewMockValueStore(context.Background(), id, dstore)
+	r := tu.NewMockValueStore(context.Background(), id, dstore)
 	rs := NewIprsResolver(r, dag, 10, nil)
 	publisher := psh.NewDHTPublisher(r, dag)
 
@@ -171,7 +171,7 @@ func TestCacheTimeRangeExpired(t *testing.T) {
 	dag := dstest.Mock()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
-	r := vs.NewMockValueStore(context.Background(), id, dstore)
+	r := tu.NewMockValueStore(context.Background(), id, dstore)
 	rs := NewIprsResolver(r, dag, 10, nil)
 	publisher := psh.NewDHTPublisher(r, dag)
 

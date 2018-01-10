@@ -10,7 +10,6 @@ import (
 	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 	//	rsv "github.com/dirkmc/go-iprs/resolver"
 	tu "github.com/dirkmc/go-iprs/test"
-	vs "github.com/dirkmc/go-iprs/vs"
 	//	path "github.com/ipfs/go-ipfs/path"
 	dstest "github.com/ipfs/go-ipfs/merkledag/test"
 	u "gx/ipfs/QmPsAfmDBnZN3kZGSuNwvCNDZiHneERSKmRcFyG3UkvcT3/go-ipfs-util"
@@ -100,9 +99,8 @@ func TestPublishAndResolve(t *testing.T) {
 	dag := dstest.Mock()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
-	r := vs.NewMockValueStore(ctx, id, dstore)
-	kvstore := vs.NewKadValueStore(dstore, r)
-	rs := NewRecordSystem(kvstore, dag, 0)
+	r := tu.NewMockValueStore(ctx, id, dstore)
+	rs := NewRecordSystem(r, dag, 0)
 
 	// Generate a key for signing the records
 	sr := u.NewSeededRand(15)
@@ -180,9 +178,8 @@ func TestPublishAndResolveSharedKey(t *testing.T) {
 	dag := dstest.Mock()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
-	r := vs.NewMockValueStore(ctx, id, dstore)
-	kvstore := vs.NewKadValueStore(dstore, r)
-	rs := NewRecordSystem(kvstore, dag, 0)
+	r := tu.NewMockValueStore(ctx, id, dstore)
+	rs := NewRecordSystem(r, dag, 0)
 
 	// CA Certificate
 	caCert, caPk, err := tu.GenerateCACertificate("ca cert")

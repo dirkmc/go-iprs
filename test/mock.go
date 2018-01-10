@@ -1,4 +1,4 @@
-package iprs_vs
+package iprs_test
 
 import (
 	"context"

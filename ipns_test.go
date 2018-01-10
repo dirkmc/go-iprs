@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	vs "github.com/dirkmc/go-iprs/vs"
+	tu "github.com/dirkmc/go-iprs/test"
 	dstest "github.com/ipfs/go-ipfs/merkledag/test"
 	namesys "github.com/ipfs/go-ipfs/namesys"
 	path "github.com/ipfs/go-ipfs/path"
@@ -24,10 +24,9 @@ func TestIpnsResolve(t *testing.T) {
 	dag := dstest.Mock()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
-	r := vs.NewMockValueStore(context.Background(), id, dstore)
-	kvstore := vs.NewKadValueStore(dstore, r)
+	r := tu.NewMockValueStore(context.Background(), id, dstore)
 	ns := namesys.NewNameSystem(r, dstore, 0)
-	rs := NewRecordSystem(kvstore, dag, 0)
+	rs := NewRecordSystem(r, dag, 0)
 
 	pk, pubk, err := testutil.RandTestKeyPair(512)
 	if err != nil {
