@@ -34,8 +34,8 @@ type mprs struct {
 	publisher Publisher
 }
 
-func NewRecordSystem(vstore routing.ValueStore, dag mdag.DAGService, cachesize int) RecordSystem {
-	resolver := rsv.NewResolver(vstore, dag, cachesize, nil)
+func NewRecordSystem(vstore routing.ValueStore, dag mdag.DAGService, opts *rsv.ResolverOpts) RecordSystem {
+	resolver := rsv.NewResolver(vstore, dag, opts)
 	publisher := psh.NewDHTPublisher(vstore, dag)
 	return &mprs{resolver, publisher}
 }

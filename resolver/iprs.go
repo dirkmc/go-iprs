@@ -22,18 +22,14 @@ type IprsResolver struct {
 	verifier    *rec.MasterRecordVerifier
 }
 
-// cachesize is the limit of the number of entries in the lru cache. Setting it
-// to '0' will disable caching.
-func NewIprsResolver(vs routing.ValueStore, dag node.NodeGetter, cachesize int, ttlp *time.Duration) *IprsResolver {
-	ttl := DefaultIprsCacheTTL
-	tp := &ttl
-	if ttlp != nil {
-		tp = &ttl
+func NewIprsResolver(vs routing.ValueStore, dag node.NodeGetter, opts *CacheOpts) *IprsResolver {
+	if opts == nil {
+		ttl := DefaultIprsCacheTTL
+		opts = &CacheOpts{10, &ttl}
 	}
 	v := rec.NewMasterRecordVerifier(dag)
-
 	rs := IprsResolver{vstore: vs, dag: dag, verifier: v}
-	rs.cache = NewResolverCache(&rs, cachesize, tp)
+	rs.cache = NewResolverCache(&rs, opts)
 	return &rs
 }
 

@@ -8,7 +8,7 @@ import (
 
 	rec "github.com/dirkmc/go-iprs/record"
 	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
-	//	rsv "github.com/dirkmc/go-iprs/resolver"
+	rsv "github.com/dirkmc/go-iprs/resolver"
 	tu "github.com/dirkmc/go-iprs/test"
 	//	path "github.com/ipfs/go-ipfs/path"
 	dstest "github.com/ipfs/go-ipfs/merkledag/test"
@@ -100,7 +100,7 @@ func TestPublishAndResolve(t *testing.T) {
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
 	r := tu.NewMockValueStore(ctx, id, dstore)
-	rs := NewRecordSystem(r, dag, 0)
+	rs := NewRecordSystem(r, dag, rsv.NoCacheOpts)
 
 	// Generate a key for signing the records
 	sr := u.NewSeededRand(15)
@@ -179,7 +179,7 @@ func TestPublishAndResolveSharedKey(t *testing.T) {
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
 	r := tu.NewMockValueStore(ctx, id, dstore)
-	rs := NewRecordSystem(r, dag, 0)
+	rs := NewRecordSystem(r, dag, rsv.NoCacheOpts)
 
 	// CA Certificate
 	caCert, caPk, err := tu.GenerateCACertificate("ca cert")

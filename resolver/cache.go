@@ -9,6 +9,11 @@ import (
 
 const DefaultResolverCacheTTL = time.Minute
 
+type CacheOpts struct {
+	size int
+	ttl *time.Duration
+}
+
 type ValueGetter interface {
 	GetValue(ctx context.Context, k string) (val []byte, eol *time.Time, e error)
 }
@@ -26,16 +31,19 @@ type cacheEntry struct {
 
 // cachesize is the limit of the number of entries in the lru cache. Setting it
 // to '0' will disable caching.
-func NewResolverCache(vg ValueGetter, cachesize int, ttlp *time.Duration) *ResolverCache {
+func NewResolverCache(vg ValueGetter, opts *CacheOpts) *ResolverCache {
+	if opts == nil {
+		opts = &CacheOpts{10, nil}
+	}
 	var cache *lru.Cache
-	if cachesize > 0 {
-		cache, _ = lru.New(cachesize)
+	if opts.size > 0 {
+		cache, _ = lru.New(opts.size)
 	}
-	ttl := DefaultResolverCacheTTL
-	if ttlp != nil {
-		ttl = *ttlp
+	if opts.ttl == nil {
+		ttl := DefaultResolverCacheTTL
+		opts.ttl = &ttl
 	}
-	return &ResolverCache{vg, cache, ttl}
+	return &ResolverCache{vg, cache, *opts.ttl}
 }
 
 func (r *ResolverCache) cacheGet(k string) ([]byte, bool) {

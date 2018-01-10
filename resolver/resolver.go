@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	routing "gx/ipfs/QmPCGUjMRuBcPybZFpjhzpifwPP9wPRoiy5geTQKU4vqWA/go-libp2p-routing"
 	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
@@ -36,16 +35,31 @@ var ErrResolveRecursion = errors.New("Could not resolve name (recursion limit ex
 
 var prefixes = []string{"/iprs/", "/ipns/"}
 
+type ResolverOpts struct {
+	dns *CacheOpts
+	iprs *CacheOpts
+	ipns *CacheOpts
+}
+
+var NoCacheOpts = &ResolverOpts{
+	dns: &CacheOpts{0, nil},
+	iprs: &CacheOpts{0, nil},
+	ipns: &CacheOpts{0, nil},
+}
+
 type Resolver struct {
 	dns *DNSResolver
 	iprs *IprsResolver
 	ipns *IpnsResolver
 }
 
-func NewResolver(vstore routing.ValueStore, dag node.NodeGetter, cachesize int, ttl *time.Duration) *Resolver {
-	dns := NewDNSResolver(cachesize, ttl)
-	iprs := NewIprsResolver(vstore, dag, cachesize, ttl)
-	ipns := NewIpnsResolver(vstore, cachesize, ttl)
+func NewResolver(vstore routing.ValueStore, dag node.NodeGetter, opts *ResolverOpts) *Resolver {
+	if opts == nil {
+		opts = &ResolverOpts{nil, nil, nil}
+	}
+	dns := NewDNSResolver(opts.dns)
+	iprs := NewIprsResolver(vstore, dag, opts.iprs)
+	ipns := NewIpnsResolver(vstore, opts.ipns)
 	return &Resolver{dns, iprs, ipns}
 }
 

@@ -55,7 +55,7 @@ func TestCacheSizeZero(t *testing.T) {
 	publisher.Publish(ctx, iprsKey, eolRecord)
 
 	// Get the entry value (cache is size zero so it will be retrieved from routing)
-	rs := NewIprsResolver(r, dag, 0, nil)
+	rs := NewIprsResolver(r, dag, &CacheOpts{0, nil})
 	res, err := rs.Resolve(ctx, iprsKey)
 	if err != nil {
 		t.Fatal(err)
@@ -84,7 +84,7 @@ func TestCacheSizeTen(t *testing.T) {
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
 	r := tu.NewMockValueStore(context.Background(), id, dstore)
-	rs := NewIprsResolver(r, dag, 10, nil)
+	rs := NewIprsResolver(r, dag, &CacheOpts{10, nil})
 	publisher := psh.NewDHTPublisher(r, dag)
 
 	ts := time.Now().Add(time.Hour)
@@ -128,7 +128,7 @@ func TestCacheEolExpired(t *testing.T) {
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
 	r := tu.NewMockValueStore(context.Background(), id, dstore)
-	rs := NewIprsResolver(r, dag, 10, nil)
+	rs := NewIprsResolver(r, dag, &CacheOpts{10, nil})
 	publisher := psh.NewDHTPublisher(r, dag)
 
 	ts := time.Now().Add(time.Millisecond * 100)
@@ -172,7 +172,7 @@ func TestCacheTimeRangeExpired(t *testing.T) {
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
 	r := tu.NewMockValueStore(context.Background(), id, dstore)
-	rs := NewIprsResolver(r, dag, 10, nil)
+	rs := NewIprsResolver(r, dag, &CacheOpts{10, nil})
 	publisher := psh.NewDHTPublisher(r, dag)
 
 	pk, _, err := testutil.RandTestKeyPair(512)

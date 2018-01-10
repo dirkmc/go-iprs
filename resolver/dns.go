@@ -23,14 +23,13 @@ type DNSResolver struct {
 }
 
 // NewDNSResolver constructs a name resolver using DNS TXT records.
-func NewDNSResolver(cachesize int, ttlp *time.Duration) *DNSResolver {
-	ttl := DefaultDnsCacheTTL
-	tp := &ttl
-	if ttlp != nil {
-		tp = &ttl
+func NewDNSResolver(opts *CacheOpts) *DNSResolver {
+	if opts == nil {
+		ttl := DefaultDnsCacheTTL
+		opts = &CacheOpts{10, &ttl}
 	}
 	rs := DNSResolver{lookupTXT: net.LookupTXT}
-	rs.cache = NewResolverCache(&rs, cachesize, tp)
+	rs.cache = NewResolverCache(&rs, opts)
 	return &rs
 }
 

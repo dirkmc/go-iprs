@@ -23,17 +23,13 @@ type IpnsResolver struct {
 	cache       *ResolverCache
 }
 
-// cachesize is the limit of the number of entries in the lru cache. Setting it
-// to '0' will disable caching.
-func NewIpnsResolver(vs routing.ValueStore, cachesize int, ttlp *time.Duration) *IpnsResolver {
-	ttl := DefaultIpnsCacheTTL
-	tp := &ttl
-	if ttlp != nil {
-		tp = &ttl
+func NewIpnsResolver(vs routing.ValueStore, opts *CacheOpts) *IpnsResolver {
+	if opts == nil {
+		ttl := DefaultIpnsCacheTTL
+		opts = &CacheOpts{10, &ttl}
 	}
-
 	rs := IpnsResolver{vstore: vs}
-	rs.cache = NewResolverCache(&rs, cachesize, tp)
+	rs.cache = NewResolverCache(&rs, opts)
 	return &rs
 }
 
