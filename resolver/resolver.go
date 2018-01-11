@@ -66,36 +66,45 @@ func NewResolver(vstore routing.ValueStore, dag node.NodeGetter, opts *ResolverO
 // Recursively resolves a path, eg
 // /iprs/www.example.com/some/path => /ipns/<hash>/some/path => /ipfs/<hash>/some/path
 func (r *Resolver) Resolve(ctx context.Context, p string, depth int) (*node.Link, []string, error) {
+	log.Debugf("Resolve %s (%d)", p, depth)
+
 	// /iprs/<hash>/some/path => ["", "iprs", "<hash>", "some", "path"]
 	parts := strings.Split(p, "/")
 	if len(parts) < 3 {
-		return nil, nil, fmt.Errorf("Could not resolve %s", p)
+		return nil, nil, fmt.Errorf("Could not resolve %s: invalid format", p)
 	}
 
 	// /iprs/<hash>
 	p = "/" + parts[1] + "/" + parts[2]
 	c, err := r.ResolveName(ctx, p, depth)
 	if err != nil {
+		log.Debugf("Could not resolve %s: %s", p, err)
 		return nil, nil, err
 	}
-	
+
+	// ["some", "path"]
+	rest := parts[3:]
+	log.Debugf("Resolved %s to %s %s", p, c, rest)
+
 	// Link, ["some", "path"]
-	return &node.Link{Cid: c}, parts[3:], nil
+	return &node.Link{Cid: c}, rest, nil
 }
 
 // Recursively resolves a name, eg
 // /iprs/www.example.com => /ipns/<hash> => /ipfs/<hash>
 func (r *Resolver) ResolveName(ctx context.Context, p string, depth int) (*cid.Cid, error) {
-	// If we've recursed up to the limit, bail out with an error
-	if depth == 0 {
-		return nil, ErrResolveRecursion
-	}
-
-	log.Debugf("Resolve %s", p)
+	log.Debugf("Resolve name %s (%d)", p, depth)
 
 	// If it's an IPFS path, return the CID
 	if strings.HasPrefix(p, "/ipfs/") {
+		log.Debugf("Resolved name %s as IPFS path", p, depth)
 		return rsp.ParseTargetToCid([]byte(p))
+	}
+
+	// If we've recursed up to the limit, bail out with an error
+	if depth == 0 {
+		log.Debugf("Could not resolve name %s (reached recursion limit)", p)
+		return nil, ErrResolveRecursion
 	}
 
 	// If it's a domain name, resolve using DNS

@@ -39,7 +39,7 @@ type lookupRes struct {
 }
 
 func (r *DNSResolver) Resolve(ctx context.Context, domain string) (string, error) {
-	log.Debugf("IPRS Resolve %s", domain)
+	log.Debugf("DNS Resolve %s", domain)
 	if !isd.IsDomain(domain) {
 		return "", fmt.Errorf("Not a valid domain name: [%s]", domain)
 	}
@@ -88,14 +88,13 @@ func (r *DNSResolver) GetValue(ctx context.Context, domain string) ([]byte, *tim
 
 func workDomain(r *DNSResolver, name string, res chan lookupRes) {
 	txt, err := r.lookupTXT(name)
-	log.Debugf("DNSResolver lookupTXT(%s) => %s", name, txt)
-
 	if err != nil {
 		// Error is != nil
 		res <- lookupRes{"", err}
 		return
 	}
 
+	log.Debugf("DNSResolver lookupTXT(%s) => %s", name, txt)
 	for _, t := range txt {
 		p, err := parseEntry(t)
 		if err == nil {
@@ -155,15 +154,10 @@ func isIprsPath(txt string) bool {
 	if parts[1] != "iprs" {
 		return false
 	}
-	if parts[2] == "" {
-		return false
-	}
-	if parts[2] == "" {
-		return false
-	}
 	if isd.IsDomain(parts[2]) {
 		return true
 	}
+
 	_, err := cid.Parse(parts[2])
-	return err != nil
+	return err == nil
 }
