@@ -33,17 +33,18 @@ func NewIprsResolver(vs routing.ValueStore, dag node.NodeGetter, opts *CacheOpts
 	return &rs
 }
 
-func (r *IprsResolver) Resolve(ctx context.Context, iprsKey rsp.IprsPath) (*cid.Cid, error) {
+func (r *IprsResolver) Resolve(ctx context.Context, iprsKey rsp.IprsPath) (*cid.Cid, []string, error) {
 	log.Debugf("IPRS Resolve %s", iprsKey)
 
 	// Use the routing system to get the entry
 	val, err := r.cache.GetValue(ctx, iprsKey.String())
 	if err != nil {
 		log.Warningf("IprsResolver get failed for %s", iprsKey)
-		return nil, err
+		return nil, nil, err
 	}
 
-	return cid.Parse(val)
+	c, err := cid.Parse(val)
+	return c, []string{}, err
 }
 
 func (r *IprsResolver) GetValue(ctx context.Context, k string) ([]byte, *time.Time, error) {

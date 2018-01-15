@@ -10,6 +10,7 @@ import (
 	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 	isd "gx/ipfs/QmZmmuAXgX73UQmX1jRKjTGmjzq24Jinqkq8vzkBtno4uX/go-is-domain"
 	path "github.com/ipfs/go-ipfs/path"
+	rsp "github.com/dirkmc/go-iprs/path"
 )
 
 const DefaultDnsCacheTTL = time.Minute
@@ -38,19 +39,20 @@ type lookupRes struct {
 	error error
 }
 
-func (r *DNSResolver) Resolve(ctx context.Context, domain string) (string, error) {
+func (r *DNSResolver) Resolve(ctx context.Context, domain string) (string, []string, error) {
 	log.Debugf("DNS Resolve %s", domain)
 	if !isd.IsDomain(domain) {
-		return "", fmt.Errorf("Not a valid domain name: [%s]", domain)
+		return "", nil, fmt.Errorf("Not a valid domain name: [%s]", domain)
 	}
 
 	val, err := r.cache.GetValue(ctx, domain)
 	if err != nil {
 		log.Warningf("DnsResolver get failed for %s", domain)
-		return "", err
+		return "", nil, err
 	}
 
-	return string(val), nil
+	log.Debugf("DNS Resolve %s => %s", domain, val)
+	return rsp.ParseTargetToPathParts(val)
 }
 
 func (r *DNSResolver) GetValue(ctx context.Context, domain string) ([]byte, *time.Time, error) {

@@ -3,6 +3,7 @@ package iprs_resolver
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	tu "github.com/dirkmc/go-iprs/test"
@@ -180,7 +181,7 @@ func TestDNSResolution(t *testing.T) {
 	testResolution(t, r, "/iprs/multi.example.com", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD", nil)
 	testResolution(t, r, "/iprs/multi.example.com", 1, "/ipns/dns1.example.com", ErrResolveRecursion)
 	testResolution(t, r, "/iprs/multi.example.com", 2, "/ipns/ipfs.example.com", ErrResolveRecursion)
-	//testResolution(t, r, "/iprs/equals.example.com", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/=equals", nil)
+	testResolution(t, r, "/iprs/equals.example.com", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/=equals", nil)
 	testResolution(t, r, "/iprs/loop1.example.com", 1, "/ipns/loop2.example.com", ErrResolveRecursion)
 	testResolution(t, r, "/iprs/loop1.example.com", 2, "/ipns/loop1.example.com", ErrResolveRecursion)
 	testResolution(t, r, "/iprs/loop1.example.com", 3, "/ipns/loop2.example.com", ErrResolveRecursion)
@@ -190,19 +191,19 @@ func TestDNSResolution(t *testing.T) {
 	testResolution(t, r, "/iprs/dloop1.example.com", 3, "/ipns/loop2.example.com", ErrResolveRecursion)
 	testResolution(t, r, "/iprs/dloop1.example.com", DefaultDepthLimit, "/ipns/loop1.example.com", ErrResolveRecursion)
 	testResolution(t, r, "/iprs/bad.example.com", DefaultDepthLimit, "", ErrResolveFailed)
-	//testResolution(t, r, "/iprs/withsegment.example.com", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/segment", nil)
-	// testResolution(t, r, "/iprs/withrecsegment.example.com", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/segment/subsub", nil)
-	// testResolution(t, r, "/iprs/withrecsegmentiprs.example.com", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/segment/subsub", nil)
-	// testResolution(t, r, "/iprs/withsegment.example.com/test1", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/segment/test1", nil)
-	// testResolution(t, r, "/iprs/withrecsegment.example.com/test2", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/segment/subsub/test2", nil)
-	// testResolution(t, r, "/iprs/withrecsegment.example.com/test3/", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/segment/subsub/test3/", nil)
-	// testResolution(t, r, "/iprs/withtrailingrec.example.com", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/segment/", nil)
+	testResolution(t, r, "/iprs/withsegment.example.com", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/segment", nil)
+	testResolution(t, r, "/iprs/withrecsegment.example.com", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/segment/subsub", nil)
+	testResolution(t, r, "/iprs/withrecsegmentiprs.example.com", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/segment/subsub", nil)
+	testResolution(t, r, "/iprs/withsegment.example.com/test1", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/segment/test1", nil)
+	testResolution(t, r, "/iprs/withrecsegment.example.com/test2", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/segment/subsub/test2", nil)
+	testResolution(t, r, "/iprs/withrecsegment.example.com/test3/", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/segment/subsub/test3", nil)
+	testResolution(t, r, "/iprs/withtrailingrec.example.com", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD/sub/segment", nil)
 	testResolution(t, r, "/iprs/double.example.com", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD", nil)
 	testResolution(t, r, "/iprs/conflict.example.com", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjE", nil)
 }
 
 func testResolution(t *testing.T, resolver *Resolver, name string, depth int, expected string, expError error) {
-	lnk, _, err := resolver.Resolve(context.Background(), name, depth)
+	lnk, rest, err := resolver.Resolve(context.Background(), name, depth)
 	if err != nil {
 		if err != expError {
 			t.Fatal(fmt.Errorf(
@@ -216,9 +217,13 @@ func testResolution(t *testing.T, resolver *Resolver, name string, depth int, ex
 			"%s with depth %d could not be resolved to %s",
 			name, depth, expected))
 	}
-	if lnk.Cid.String() != expected {
+	p := lnk.Cid.String()
+	if len(rest) > 0 {
+		p += "/" + strings.Join(rest, "/")
+	}
+	if p != expected {
 		t.Fatal(fmt.Errorf(
 			"%s with depth %d resolved to %s != %s",
-			name, depth, lnk.Cid.String(), expected))
+			name, depth, p, expected))
 	}
 }

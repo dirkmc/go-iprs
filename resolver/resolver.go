@@ -76,14 +76,13 @@ func (r *Resolver) Resolve(ctx context.Context, p string, depth int) (*node.Link
 
 	// /iprs/<hash>
 	p = "/" + parts[1] + "/" + parts[2]
-	c, err := r.ResolveName(ctx, p, depth)
+	c, rest, err := r.ResolveName(ctx, p, depth, parts[3:])
 	if err != nil {
 		log.Debugf("Could not resolve %s: %s", p, err)
 		return nil, nil, err
 	}
 
-	// ["some", "path"]
-	rest := parts[3:]
+	// <cid> ["some", "path"]
 	log.Debugf("Resolved %s to %s %s", p, c, rest)
 
 	// Link, ["some", "path"]
@@ -92,61 +91,82 @@ func (r *Resolver) Resolve(ctx context.Context, p string, depth int) (*node.Link
 
 // Recursively resolves a name, eg
 // /iprs/www.example.com => /ipns/<hash> => /ipfs/<hash>
-func (r *Resolver) ResolveName(ctx context.Context, p string, depth int) (*cid.Cid, error) {
+func (r *Resolver) ResolveName(ctx context.Context, p string, depth int, app []string) (*cid.Cid, []string, error) {
 	log.Debugf("Resolve name %s (%d)", p, depth)
 
 	// If it's an IPFS path, return the CID
 	if strings.HasPrefix(p, "/ipfs/") {
-		log.Debugf("Resolved name %s as IPFS path", p, depth)
-		return rsp.ParseTargetToCid([]byte(p))
+		log.Debugf("Resolved name %s as IPFS path (%d)", p, depth)
+		c, rest, err := rsp.ParseTargetToCid([]byte(p))
+		return c, appendParts(rest, app), err
 	}
 
 	// If we've recursed up to the limit, bail out with an error
 	if depth == 0 {
 		log.Debugf("Could not resolve name %s (reached recursion limit)", p)
-		return nil, ErrResolveRecursion
+		return nil, nil, ErrResolveRecursion
 	}
 
 	// If it's a domain name, resolve using DNS
 	name := removePathPrefix(p)
 	if isd.IsDomain(name) {
-		res, err := r.dns.Resolve(ctx, name)
+		res, rest, err := r.dns.Resolve(ctx, name)
 		if err != nil {
-			return nil, err
+			log.Warningf("Could not resolve domain name %s: %s", name, err)
+			return nil, nil, err
 		}
-		return r.ResolveName(ctx, res, depth -1)
+
+		return r.ResolveName(ctx, res, depth -1, appendParts(rest, app))
 	}
 
 	// If it's an IPNS or IPRS path, resolve using the DHT
 	iprsKey, err := rsp.FromString(p)
 	if err != nil {
-		return nil, err
+		log.Warningf("Could not parse path %s: %s", p, err)
+		return nil, nil, err
 	}
 
 	// IPNS
 	if iprsKey.IsIpns() {
-		res, err := r.ipns.Resolve(ctx, iprsKey)
+		res, rest, err := r.ipns.Resolve(ctx, iprsKey)
 		if err != nil {
-			return nil, err
+			log.Warningf("Could not resolve IPNS path %s: %s", iprsKey, err)
+			return nil, nil, err
 		}
-		return r.ResolveName(ctx, res, depth -1)
+		return r.ResolveName(ctx, res, depth -1, appendParts(rest, app))
 	}
 
 	// IPRS
-	c, err := r.iprs.Resolve(ctx, iprsKey)
+	c, rest, err := r.iprs.Resolve(ctx, iprsKey)
 	if err != nil {
-		return nil, err
+		log.Warningf("Could not resolve IPRS path %s: %s", iprsKey, err)
+		return nil, nil, err
 	}
 
 	// If the CID is for an IPRS or IPNS node, recurse
 	k, err := rsp.FromCid(c)
 	if err == nil { // IPRS/IPNS CID
-		return r.ResolveName(ctx, k.String(), depth - 1)
+		return r.ResolveName(ctx, k.String(), depth -1, appendParts(rest, app))
 	}
 
 	// If we've bottomed out with a CID for a non-recursive node
 	// (eg IPFS, git, btc etc) we can return it
-	return c, nil
+	log.Debugf("Resolved name %s to Node %s (%d)", iprsKey, c, depth)
+	return c, appendParts(rest, app), nil
+}
+
+func appendParts(a1, a2 []string) []string {
+	var ar []string
+	filterEmpty := func(a []string) {
+		for _, s := range(a) {
+			if len(s) > 0 {
+				ar = append(ar, s)
+			}
+		}
+	}
+	filterEmpty(a1)
+	filterEmpty(a2)
+	return ar
 }
 
 func removePathPrefix(val string) string {

@@ -56,7 +56,7 @@ func TestCacheSizeZero(t *testing.T) {
 
 	// Get the entry value (cache is size zero so it will be retrieved from routing)
 	rs := NewIprsResolver(r, dag, &CacheOpts{0, nil})
-	res, err := rs.Resolve(ctx, iprsKey)
+	res, _, err := rs.Resolve(ctx, iprsKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestCacheSizeZero(t *testing.T) {
 	}
 
 	// Get the entry value again
-	res, err = rs.Resolve(ctx, iprsKey)
+	res, _, err = rs.Resolve(ctx, iprsKey)
 	if err == nil {
 		t.Fatal("Expected key not found error")
 	}
@@ -98,7 +98,7 @@ func TestCacheSizeTen(t *testing.T) {
 	publisher.Publish(ctx, iprsKey, eolRecord)
 
 	// Get the entry value
-	res, err := rs.Resolve(ctx, iprsKey)
+	res, _, err := rs.Resolve(ctx, iprsKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestCacheSizeTen(t *testing.T) {
 	}
 
 	// Get the entry value again
-	res, err = rs.Resolve(ctx, iprsKey)
+	res, _, err = rs.Resolve(ctx, iprsKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func TestCacheEolExpired(t *testing.T) {
 	publisher.Publish(ctx, iprsKey, eolRecord)
 
 	// Get the entry value
-	res, err := rs.Resolve(ctx, iprsKey)
+	res, _, err := rs.Resolve(ctx, iprsKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +160,7 @@ func TestCacheEolExpired(t *testing.T) {
 	}
 
 	// Get the entry value again. Should have expired
-	res, err = rs.Resolve(ctx, iprsKey)
+	res, _, err = rs.Resolve(ctx, iprsKey)
 	if err == nil {
 		t.Fatal("Expected key not found error")
 	}
@@ -204,7 +204,7 @@ func TestCacheTimeRangeExpired(t *testing.T) {
 	publisher.Publish(ctx, iprsKey, rangeRecord)
 
 	// Get the entry value
-	res, err := rs.Resolve(ctx, iprsKey)
+	res, _, err := rs.Resolve(ctx, iprsKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +222,7 @@ func TestCacheTimeRangeExpired(t *testing.T) {
 	}
 
 	// Get the entry again. Should have expired
-	res, err = rs.Resolve(ctx, iprsKey)
+	res, _, err = rs.Resolve(ctx, iprsKey)
 	if err == nil {
 		t.Fatal("Expected key not found error")
 	}

@@ -33,17 +33,18 @@ func NewIpnsResolver(vs routing.ValueStore, opts *CacheOpts) *IpnsResolver {
 	return &rs
 }
 
-func (r *IpnsResolver) Resolve(ctx context.Context, iprsKey rsp.IprsPath) (string, error) {
+func (r *IpnsResolver) Resolve(ctx context.Context, iprsKey rsp.IprsPath) (string, []string, error) {
 	log.Debugf("IPNS Resolve %s", iprsKey)
 
 	// Use the routing system to get the entry
 	val, err := r.cache.GetValue(ctx, iprsKey.String())
 	if err != nil {
 		log.Warningf("IpnsResolver get failed for %s", iprsKey)
-		return "", err
+		return "", nil, err
 	}
 
-	return string(val), nil
+	log.Debugf("IPNS Resolve %s => %s", iprsKey, val)
+	return rsp.ParseTargetToPathParts(val)
 }
 
 func (r *IpnsResolver) GetValue(ctx context.Context, k string) ([]byte, *time.Time, error) {
@@ -113,7 +114,7 @@ func (r *IpnsResolver) GetValue(ctx context.Context, k string) ([]byte, *time.Ti
 
 func (r *IpnsResolver) checkValue(b []byte) error {
 	// If the target can be parsed to a CID then it's ok
-	_, err := rsp.ParseTargetToCid(b)
+	_, _, err := rsp.ParseTargetToCid(b)
 	if err == nil {
 		return nil
 	}
@@ -125,7 +126,7 @@ func (r *IpnsResolver) checkValue(b []byte) error {
 		return nil
 	}
 
-	return fmt.Errorf("target is not CID or domain name")
+	return fmt.Errorf("target %s is not CID or domain name", b)
 }
 
 func (r *IpnsResolver) entryDataForSig(e *nspb.IpnsEntry) []byte {
