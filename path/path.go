@@ -103,18 +103,14 @@ func (p IprsPath) Cid() *cid.Cid {
 //
 // "/iprs/<hash>/some/relative/path"
 // =>
-// "/some/relative/path"
+// ["some", "relative", "path"]
 //
 // "/iprs/<hash>"
 // =>
-// ""
+// []
 //
-func (p IprsPath) GetRelativePath() string {
-	parts := p.Segments()
-	if len(parts) == 2 || parts[2] == "" {
-		return ""
-	}
-	return "/" + strings.Join(parts[2:], "/")
+func (p IprsPath) RelativePath() []string {
+	return p.Segments()[2:]
 }
 
 func IsValid(txt string) bool {

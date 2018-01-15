@@ -125,16 +125,16 @@ func TestCid(t *testing.T) {
 		}
 		result := path.Cid().String()
 		if result != expected {
-			t.Fatalf("expected IsJustAKey(%s) to return %v, not %v", p, expected, result)
+			t.Fatalf("expected TestCid(%s) to return %v, not %v", p, expected, result)
 		}
 	}
 }
 
-func TestGetRelativePath(t *testing.T) {
-	cases := map[string]string{
-		"/iprs/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n":     "",
-		"/iprs/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n/a":   "/a",
-		"/iprs/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n/a/b": "/a/b",
+func TestRelativePath(t *testing.T) {
+	cases := map[string][]string{
+		"/iprs/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n":     []string{},
+		"/iprs/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n/a":   []string{"a"},
+		"/iprs/QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n/a/b": []string{"a", "b"},
 	}
 
 	for p, expected := range cases {
@@ -142,9 +142,14 @@ func TestGetRelativePath(t *testing.T) {
 		if err != nil {
 			t.Fatalf("FromString failed to parse \"%s\", but should have succeeded", p)
 		}
-		result := path.GetRelativePath()
-		if result != expected {
-			t.Fatalf("expected IsJustAKey(%s) to return %v, not %v", p, expected, result)
+		result := path.RelativePath()
+		if len(result) != len(expected) {
+			t.Fatalf("expected RelativePath(%s) to have length %d, not %d", p, len(expected), len(result))
+		}
+		for i, _ := range result {
+			if result[i] != expected[i] {
+				t.Fatalf("expected RelativePath(%s) to return %v, not %v", p, expected, result)
+			}
 		}
 	}
 }
