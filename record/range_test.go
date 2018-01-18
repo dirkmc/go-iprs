@@ -144,7 +144,7 @@ func TestRangeValidation(t *testing.T) {
 	expiredA := NewRecord(&InOneHour, &InTwoHours, p1)
 	expiredB := NewRecord(&InOneHour, EndOfTime, p1)
 
-	iprsKey, err := rsp.FromString("/iprs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5")
+	iprsKey, err := rsp.FromString("/iprs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/myrec")
 	if err != nil {
 		t.Fatal(err)
 	}

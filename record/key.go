@@ -46,12 +46,12 @@ func (s *KeyRecordSigner) Nodes() ([]node.Node, error) {
 	return []node.Node{n}, nil
 }
 
-func (s *KeyRecordSigner) BasePath() (rsp.IprsPath, error) {
+func (s *KeyRecordSigner) BasePath(id string) (rsp.IprsPath, error) {
 	n, err := s.getPubkNode()
 	if err != nil {
 		return rsp.NilPath, err
 	}
-	return rsp.FromString("/iprs/" + n.Cid().String())
+	return rsp.FromString("/iprs/" + n.Cid().String() + "/" + id)
 }
 
 func (s *KeyRecordSigner) SignRecord(data []byte) ([]byte, error) {

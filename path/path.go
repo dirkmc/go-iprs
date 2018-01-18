@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
-	ld "github.com/dirkmc/go-iprs/ipld"
 )
 
 type IprsPath struct {
@@ -53,26 +52,20 @@ func (p IprsPath) Pretty() string {
 	return "/" + strings.Join(parts, "/")
 }
 
-// IsJustAKey returns true if the path is of the form /iprs/<key>
-func (p IprsPath) IsJustAKey() bool {
-	parts := p.Segments()
-	return len(parts) == 2 && (parts[0] == "iprs" || parts[0] == "ipns")
-}
-
-// IsIpns returns true if the path is of the form /ipns/...
-func (p IprsPath) IsIpns() bool {
-	parts := p.Segments()
-	return len(parts) == 2 && parts[0] == "ipns"
-}
-
 func FromString(txt string) (IprsPath, error) {
 	parts := strings.Split(txt, "/")
-	if len(parts) < 3 {
+	if len(parts) < 4 {
 		return NilPath, fmt.Errorf("Bad IPRS Path [%s]", txt)
 	}
 
-	if parts[0] != "" || (parts[1] != "iprs" && parts[1] != "ipns") {
+	if parts[0] != "" || parts[1] != "iprs" {
 		return NilPath, fmt.Errorf("Bad IPRS Path [%s]", txt)
+	}
+
+	for i, p := range(parts) {
+		if i > 0 && p == "" {
+			return NilPath, fmt.Errorf("Bad IPRS Path [%s]", txt)
+		}
 	}
 
 	c, err := cid.Decode(parts[2])
@@ -83,34 +76,30 @@ func FromString(txt string) (IprsPath, error) {
 	return IprsPath{txt, c}, nil
 }
 
-func FromCid(c *cid.Cid) (IprsPath, error) {
-	if c.Type() != ld.CodecIprsCbor && c.Type() != ld.CodecIpns {
-		return NilPath, fmt.Errorf("Could not convert CID %s with codec %d to IPRS Path", c, c.Type())
-	}
-	p := "/iprs/"
-	if c.Type() == ld.CodecIpns {
-		p = "/ipns/"
-	}
-	p += c.String()
-
-	return FromString(p)
-}
-
 func (p IprsPath) Cid() *cid.Cid {
 	return p.c
 }
 
+func (p IprsPath) Id() string {
+	return p.Segments()[2]
+}
+
+func (p IprsPath) BasePath() string {
+	segs := p.Segments()
+	return "/iprs/" + segs[1] + "/" + segs[2]
+}
+
 //
-// "/iprs/<hash>/some/relative/path"
+// "/iprs/<cid>/id/some/relative/path"
 // =>
 // ["some", "relative", "path"]
 //
-// "/iprs/<hash>"
+// "/iprs/<cid>/id"
 // =>
 // []
 //
 func (p IprsPath) RelativePath() []string {
-	return p.Segments()[2:]
+	return p.Segments()[3:]
 }
 
 func IsValid(txt string) bool {

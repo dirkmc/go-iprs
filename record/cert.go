@@ -55,21 +55,14 @@ func (s *CertRecordSigner) Nodes() ([]node.Node, error) {
 	return []node.Node{n}, nil
 }
 
-func (s *CertRecordSigner) BasePath() (rsp.IprsPath, error) {
+func (s *CertRecordSigner) BasePath(id string) (rsp.IprsPath, error) {
 	n, err := s.getCertNode()
 	if err != nil {
 		return rsp.NilPath, err
 	}
-	return rsp.FromString("/iprs/" + n.Cid().String())
+	return rsp.FromString("/iprs/" + n.Cid().String() + "/" + id)
 }
 
-/*
-func (s *CertRecordSigner) PublishVerification(ctx context.Context, iprsKey rsp.IprsPath, entry *pb.IprsEntry) error {
-	// TODO: Check iprsKey is valid for this type of RecordSigner
-	_, err := s.m.PutCertificate(ctx, s.cert)
-	return err
-}
-*/
 func (s *CertRecordSigner) SignRecord(data []byte) ([]byte, error) {
 	return c.Sign(s.pk, data)
 }

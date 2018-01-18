@@ -29,11 +29,7 @@ func getEolRecord(t *testing.T, c *cid.Cid, ts time.Time, r routing.ValueStore) 
 		t.Fatal(err)
 	}
 
-	basePath, err := s.BasePath()
-	if err != nil {
-		t.Fatal(err)
-	}
-	iprsKey, err := rsp.FromString(basePath.String() + "/myrec")
+	iprsKey, err := s.BasePath("myrec")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,11 +211,7 @@ func TestCacheTimeRangeExpired(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	basePath, err := s.BasePath()
-	if err != nil {
-		t.Fatal(err)
-	}
-	iprsKey, err := rsp.FromString(basePath.String() + "/myrec")
+	iprsKey, err := s.BasePath("myrec")
 	if err != nil {
 		t.Fatal(err)
 	}

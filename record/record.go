@@ -30,8 +30,8 @@ type RecordChecker interface {
 }
 
 type RecordSigner interface {
-	// Get the base IPRS path, eg /iprs/<certificate cid>
-	BasePath() (rsp.IprsPath, error)
+	// Get the base IPRS path, eg /iprs/<certificate cid>/id
+	BasePath(id string) (rsp.IprsPath, error)
 	VerificationType() ld.IprsVerificationType
 	// Return the verification data for the record
 	Verification() (interface{}, error)

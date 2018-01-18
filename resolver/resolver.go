@@ -30,8 +30,6 @@ var ErrResolveFailed = errors.New("Could not resolve name.")
 // ErrResolveRecursion signals a recursion-depth limit.
 var ErrResolveRecursion = errors.New("Could not resolve name (recursion limit exceeded).")
 
-var prefixes = []string{"/iprs/", "/ipns/"}
-
 type ResolverOpts struct {
 	dns *CacheOpts
 	iprs *CacheOpts

@@ -15,8 +15,6 @@ import (
 //   <raw byte hash pointing to IPFS node>
 // - New record
 //   /ipfs/<B58 hash>
-//   /ipns/<B58 hash>
-//   /iprs/<cid>
 func ParseTargetToCid(val []byte) (*cid.Cid, []string, error) {
 	var c *cid.Cid
 
@@ -44,14 +42,7 @@ func ParseTargetToCid(val []byte) (*cid.Cid, []string, error) {
 		return c, segs[2:], nil
 	}
 
-	// TODO: Don't try to parse IPRS path
-	
-	// It's an IPRS path
-	rsk, err := FromString(valstr)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Could not parse IPNS record value [%s]", valstr)
-	}
-	return rsk.Cid(), rsk.RelativePath(), nil
+	return nil, nil, fmt.Errorf("Could not parse IPNS record value [%s]", valstr)
 }
 
 // Target record value can be

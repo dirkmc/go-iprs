@@ -66,7 +66,7 @@ func TestKeyRecordVerification(t *testing.T) {
 	ts := time.Now()
 
 	// Sign record with signature
-	iprsKey := getIprsPathFromKey(t, pk)
+	iprsKey := getIprsPathFromKey(t, pk, "myrec")
 	r1 := publishNewRecord(iprsKey, pk, ts.Add(time.Hour))
 
 	// Record is valid if the iprs path points to the cid
@@ -77,9 +77,9 @@ func TestKeyRecordVerification(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Publish unrelated record so that it's key is available
+	// Publish unrelated record so that it's public key is available
 	// on the network
-	unrelatedIprsKey := getIprsPathFromKey(t, otherpk)
+	unrelatedIprsKey := getIprsPathFromKey(t, otherpk, "otherrec")
 	publishNewRecord(unrelatedIprsKey, otherpk, ts.Add(time.Hour))
 	
 	// Record is not valid if the key is a different cid
@@ -94,9 +94,9 @@ func TestKeyRecordVerification(t *testing.T) {
 	// be retrieved from the network
 }
 
-func getIprsPathFromKey(t *testing.T, pk ci.PrivKey) rsp.IprsPath {
+func getIprsPathFromKey(t *testing.T, pk ci.PrivKey, id string) rsp.IprsPath {
 	s := rec.NewKeyRecordSigner(pk)
-	bp, err := s.BasePath()
+	bp, err := s.BasePath(id)
 	if err != nil {
 		t.Fatal(err)
 	}

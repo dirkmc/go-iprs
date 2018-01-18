@@ -3,7 +3,6 @@ package iprs_resolver
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	ld "github.com/dirkmc/go-iprs/ipld"
@@ -36,27 +35,19 @@ func NewIprsResolver(parent *Resolver, vs routing.ValueStore, dag node.NodeGette
 }
 
 func (r *IprsResolver) Accept(p string) bool {
-	parts := strings.Split(p, "/")
-	if len(parts) < 4 {
-		return false
-	}
-	if parts[1] != "iprs" {
-		return false
-	}
-	_, err := cid.Decode(parts[2])
-	return err == nil
+	return rsp.IsValid(p)
 }
 
 func (r *IprsResolver) Resolve(ctx context.Context, p string) (string, []string, error) {
 	log.Debugf("IPRS Resolve %s", p)
 
-	if !r.Accept(p) {
-		return "", nil, fmt.Errorf("IPRS resolver cannot resolve %s", p)
+	iprsKey, err := rsp.FromString(p)
+	if err != nil {
+		return "", nil, fmt.Errorf("IPRS resolver cannot resolve %s", iprsKey)
 	}
-	parts := strings.Split(p, "/")
 
 	// Use the routing system to get the entry
-	k := "/iprs/" + parts[2] + "/" + parts[3]
+	k := iprsKey.BasePath()
 	val, err := r.cache.GetValue(ctx, k)
 	if err != nil {
 		log.Warningf("IprsResolver get failed for %s", k)
@@ -64,7 +55,7 @@ func (r *IprsResolver) Resolve(ctx context.Context, p string) (string, []string,
 	}
 
 	log.Debugf("IPRS Resolve %s successful", k)
-	return string(val), parts[4:], nil
+	return string(val), iprsKey.RelativePath(), nil
 }
 
 func (r *IprsResolver) GetValue(ctx context.Context, k string) ([]byte, *time.Time, error) {

@@ -69,7 +69,7 @@ func TestEolValidation(t *testing.T) {
 	ctx := context.Background()
 	NewRecord := setupNewEolRecordFunc(t)
 	ValidateRecord := EolRecordChecker.ValidateRecord
-	iprsKey, err := rsp.FromString("/iprs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5")
+	iprsKey, err := rsp.FromString("/iprs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/myrec")
 	if err != nil {
 		t.Fatal(err)
 	}

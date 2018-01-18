@@ -77,7 +77,7 @@ func TestCertRecordVerification(t *testing.T) {
 	ts := time.Now()
 
 	// Sign record with CA cert signature
-	caCertIprsKey := getIprsPathFromCert(t, caCert, caPk, "/myIprsName")
+	caCertIprsKey := getIprsPathFromCert(t, caCert, caPk, "myIprsName")
 	r1 := publishNewRecord(caCertIprsKey, caPk, caCert, ts.Add(time.Hour))
 
 	// Record is valid if the key is prefixed with the CA cert cid
@@ -90,7 +90,7 @@ func TestCertRecordVerification(t *testing.T) {
 
 	// Put the unrelated certificate onto the network by publishing a record
 	// with that cert
-	unrelatedCaCertIprsKey := getIprsPathFromCert(t, unrelatedCaCert, unrelatedCaPk, "/myIprsName")
+	unrelatedCaCertIprsKey := getIprsPathFromCert(t, unrelatedCaCert, unrelatedCaPk, "myIprsName")
 	publishNewRecord(unrelatedCaCertIprsKey, unrelatedCaPk, unrelatedCaCert, ts.Add(time.Hour))
 
 	// Record is not valid if the key is prefixed with a different
@@ -102,7 +102,7 @@ func TestCertRecordVerification(t *testing.T) {
 	}
 
 	// Sign record with CA child cert signature
-	childCertIprsKey := getIprsPathFromCert(t, caCert, caPk, "/myDelegatedFriendsIprsName")
+	childCertIprsKey := getIprsPathFromCert(t, caCert, caPk, "myDelegatedFriendsIprsName")
 	r2 := publishNewRecord(childCertIprsKey, childPk, childCert, ts.Add(time.Hour))
 
 	// Record is valid if the key is prefixed with the CA cert cid
@@ -213,26 +213,11 @@ func deleteFromRouting(t *testing.T, r *vs.MockValueStore, cert *x509.Certificat
 	}
 }
 */
-func getIprsPathFromCert(t *testing.T, cert *x509.Certificate, certPk *rsa.PrivateKey, relativePath string) rsp.IprsPath {
+func getIprsPathFromCert(t *testing.T, cert *x509.Certificate, certPk *rsa.PrivateKey, id string) rsp.IprsPath {
 	s := rec.NewCertRecordSigner(cert, certPk)
-	bp, err := s.BasePath()
+	bp, err := s.BasePath(id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	iprsKey, err := rsp.FromString(bp.String() + relativePath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return iprsKey
-	/*
-	certHash, err := c.GetCertificateHash(cert)
-	if err != nil {
-		t.Fatal(err)
-	}
-	iprsKeyStr := "/iprs/" + certHash + relativePath
-	iprsKey, err := rsp.FromString(iprsKeyStr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return iprsKey*/
+	return bp
 }

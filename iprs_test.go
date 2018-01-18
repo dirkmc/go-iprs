@@ -9,7 +9,6 @@ import (
 	rec "github.com/dirkmc/go-iprs/record"
 	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 	rsv "github.com/dirkmc/go-iprs/resolver"
-	rsp "github.com/dirkmc/go-iprs/path"
 	tu "github.com/dirkmc/go-iprs/test"
 	//	path "github.com/ipfs/go-ipfs/path"
 	dstest "github.com/ipfs/go-ipfs/merkledag/test"
@@ -122,11 +121,7 @@ func TestPublishAndResolve(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	basePath, err := signer.BasePath()
-	if err != nil {
-		t.Fatal(err)
-	}
-	iprsKey, err := rsp.FromString(basePath.String() + "/myrec")
+	iprsKey, err := signer.BasePath("myrec")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,11 +206,7 @@ func TestPublishAndResolveSharedKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	basePath, err := signer.BasePath()
-	if err != nil {
-		t.Fatal(err)
-	}
-	iprsKey, err := rsp.FromString(basePath.String() + "/myrec")
+	iprsKey, err := signer.BasePath("myrec")
 	if err != nil {
 		t.Fatal(err)
 	}

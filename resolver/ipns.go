@@ -8,7 +8,6 @@ import (
 	"time"
 
 	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
-	rsp "github.com/dirkmc/go-iprs/path"
 	nspb "github.com/ipfs/go-ipfs/namesys/pb"
 	routing "gx/ipfs/QmPCGUjMRuBcPybZFpjhzpifwPP9wPRoiy5geTQKU4vqWA/go-libp2p-routing"
 	u "gx/ipfs/QmPsAfmDBnZN3kZGSuNwvCNDZiHneERSKmRcFyG3UkvcT3/go-ipfs-util"
@@ -67,10 +66,10 @@ func (r *IpnsResolver) Resolve(ctx context.Context, p string) (string, []string,
 }
 
 func (r *IpnsResolver) GetValue(ctx context.Context, k string) ([]byte, *time.Time, error) {
-	iprsKey, err := rsp.FromString(k)
-	if err != nil {
-		return nil, nil, err
-	}
+	// Note that we can't get here unless k is a valid IPNS path
+	// so no need for error checking
+	parts := strings.Split(k, "/")
+	c, _ := cid.Decode(parts[2])
 
 	var entry *nspb.IpnsEntry
 	var pubkey ci.PubKey
@@ -80,7 +79,7 @@ func (r *IpnsResolver) GetValue(ctx context.Context, k string) ([]byte, *time.Ti
 	go func() {
 		// IPNS records are stored in the DHT at /ipns/string(<hash>)
 		// ie the hash is not B58 encoded
-		name := "/ipns/" + string(iprsKey.Cid().Hash())
+		name := "/ipns/" + string(c.Hash())
 		val, err := r.vstore.GetValue(ctx, name)
 		if err != nil {
 			log.Debugf("RoutingResolver: dht get %s failed: %s", name, err)
@@ -99,7 +98,7 @@ func (r *IpnsResolver) GetValue(ctx context.Context, k string) ([]byte, *time.Ti
 	}()
 
 	go func() {
-		pubk, err := routing.GetPublicKey(r.vstore, ctx, iprsKey.Cid().Bytes())
+		pubk, err := routing.GetPublicKey(r.vstore, ctx, c.Bytes())
 		if err != nil {
 			resp <- err
 			return
@@ -109,6 +108,7 @@ func (r *IpnsResolver) GetValue(ctx context.Context, k string) ([]byte, *time.Ti
 		resp <- nil
 	}()
 
+	var err error
 	for i := 0; i < 2; i++ {
 		err = <-resp
 		if err != nil {
@@ -118,13 +118,13 @@ func (r *IpnsResolver) GetValue(ctx context.Context, k string) ([]byte, *time.Ti
 
 	// Check signature with public key
 	if ok, err := pubkey.Verify(r.entryDataForSig(entry), entry.GetSignature()); err != nil || !ok {
-		return nil, nil, fmt.Errorf("Failed to verify IPNS record at %s: invalid signature", iprsKey)
+		return nil, nil, fmt.Errorf("Failed to verify IPNS record at %s: invalid signature", k)
 	}
 
 	eol := r.getEol(entry)
 	val := entry.GetValue()
 	if !r.parent.IsResolvable(string(val)) {
-		return nil, nil, fmt.Errorf("Failed to parse IPNS record target [%s] at %s", val, iprsKey)
+		return nil, nil, fmt.Errorf("Failed to parse IPNS record target [%s] at %s", val, k)
 	}
 
 	return val, eol, nil
