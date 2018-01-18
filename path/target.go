@@ -44,6 +44,8 @@ func ParseTargetToCid(val []byte) (*cid.Cid, []string, error) {
 		return c, segs[2:], nil
 	}
 
+	// TODO: Don't try to parse IPRS path
+	
 	// It's an IPRS path
 	rsk, err := FromString(valstr)
 	if err != nil {

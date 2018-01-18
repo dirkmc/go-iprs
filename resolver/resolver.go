@@ -4,11 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	routing "gx/ipfs/QmPCGUjMRuBcPybZFpjhzpifwPP9wPRoiy5geTQKU4vqWA/go-libp2p-routing"
-	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
-	isd "gx/ipfs/QmZmmuAXgX73UQmX1jRKjTGmjzq24Jinqkq8vzkBtno4uX/go-is-domain"
 	logging "gx/ipfs/QmSpJByNKFX1sCsHBEp3R73FL4NF6FnQTEGyNAXHm2GS52/go-log"
 	node "gx/ipfs/QmNwUEK7QbwSqyKBu3mMtToo8SUc6wQJ7gdZq4gGGJqfnf/go-ipld-format"
 	rsp "github.com/dirkmc/go-iprs/path"
@@ -47,22 +44,110 @@ var NoCacheOpts = &ResolverOpts{
 	ipns: &CacheOpts{0, nil},
 }
 
+type resolver interface {
+	Accept(p string) bool
+	Resolve(ctx context.Context, p string) (string, []string, error)
+}
+
 type Resolver struct {
-	dns *DNSResolver
-	iprs *IprsResolver
-	ipns *IpnsResolver
+	resolvers []resolver
 }
 
 func NewResolver(vstore routing.ValueStore, dag node.NodeGetter, opts *ResolverOpts) *Resolver {
 	if opts == nil {
 		opts = &ResolverOpts{nil, nil, nil}
 	}
-	dns := NewDNSResolver(opts.dns)
-	iprs := NewIprsResolver(vstore, dag, opts.iprs)
-	ipns := NewIpnsResolver(vstore, opts.ipns)
-	return &Resolver{dns, iprs, ipns}
+	r := &Resolver{}
+	dns := NewDNSResolver(r, opts.dns)
+	iprs := NewIprsResolver(r, vstore, dag, opts.iprs)
+	ipns := NewIpnsResolver(r, vstore, opts.ipns)
+	r.resolvers = []resolver{dns, iprs, ipns}
+	return r
 }
 
+// /ipfs/<cid>/some/path
+// /iprs/www.example.com/some/path
+// /iprs/<cid>/id/some/path
+// /ipns/www.example.com/some/path
+// /ipns/<cid>/some/path
+func (r *Resolver) Resolve(ctx context.Context, p string, depth int) (*node.Link, []string, error) {
+	return r.resolveWithAppendage(ctx, p, depth, []string{})
+}
+
+func (r *Resolver) resolveWithAppendage(ctx context.Context, p string, depth int, apnd []string) (*node.Link, []string, error) {
+	log.Debugf("Resolve %s (%d)", p, depth)
+
+	// Get the resolver for this kind of path
+	rsv := r.getResolver(p)
+	if rsv == nil {
+		// If we've bottomed out with a CID for a non-recursive node
+		// (eg IPFS, git, btc etc) we can return it
+		c, rest, err := rsp.ParseTargetToCid([]byte(p))
+		if err == nil {
+			log.Debugf("Resolved %s to Node %s (%d)", p, c, depth)
+			return &node.Link{Cid: c}, appendParts(rest, apnd), nil
+		}
+
+		return nil, nil, fmt.Errorf("Could not resolve %s: unrecognized format", p)
+	}
+
+	// If we've recursed up to the limit, bail out with an error
+	if depth == 0 {
+		log.Debugf("Could not resolve name %s (reached recursion limit)", p)
+		return nil, nil, ErrResolveRecursion
+	}
+
+	// Resolve the path
+	res, rest, err := rsv.Resolve(ctx, p)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Could not resolve %s: %s", p, err)
+	}
+
+	// Recurse
+	return r.resolveWithAppendage(ctx, res, depth -1, appendParts(rest, apnd))
+}
+
+func (r *Resolver) getResolver(p string) (resolver) {
+	for _, rsv := range(r.resolvers) {
+		if rsv.Accept(p) {
+			return rsv
+		}
+	}
+	return nil
+}
+
+func (r *Resolver) IsResolvable(s string) bool {
+	// Check if the target can be parsed to a CID
+	_, _, err := rsp.ParseTargetToCid([]byte(s))
+	if err == nil {
+		return true
+	}
+
+	// Check if the target can resolved by one of the resolvers
+	for _, rsv := range(r.resolvers) {
+		if rsv.Accept(s) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func appendParts(a1, a2 []string) []string {
+	var ar []string
+	filterEmpty := func(a []string) {
+		for _, s := range(a) {
+			if len(s) > 0 {
+				ar = append(ar, s)
+			}
+		}
+	}
+	filterEmpty(a1)
+	filterEmpty(a2)
+	return ar
+}
+
+/*
 // Recursively resolves a path, eg
 // /iprs/www.example.com/some/path => /ipns/<hash>/some/path => /ipfs/<hash>/some/path
 func (r *Resolver) Resolve(ctx context.Context, p string, depth int) (*node.Link, []string, error) {
@@ -137,16 +222,16 @@ func (r *Resolver) ResolveName(ctx context.Context, p string, depth int, app []s
 	}
 
 	// IPRS
-	c, rest, err := r.iprs.Resolve(ctx, iprsKey)
+	res, rest, err := r.iprs.Resolve(ctx, iprsKey)
 	if err != nil {
 		log.Warningf("Could not resolve IPRS path %s: %s", iprsKey, err)
 		return nil, nil, err
 	}
 
-	// If the CID is for an IPRS or IPNS node, recurse
-	k, err := rsp.FromCid(c)
-	if err == nil { // IPRS/IPNS CID
-		return r.ResolveName(ctx, k.String(), depth -1, appendParts(rest, app))
+	// If the response is not a CID, it's a path that we can recurse on
+	c, err := cid.Decode(res)
+	if err != nil { // IPRS/IPNS path
+		return r.ResolveName(ctx, res, depth -1, appendParts(rest, app))
 	}
 
 	// If we've bottomed out with a CID for a non-recursive node
@@ -155,23 +240,10 @@ func (r *Resolver) ResolveName(ctx context.Context, p string, depth int, app []s
 	return c, appendParts(rest, app), nil
 }
 
-func appendParts(a1, a2 []string) []string {
-	var ar []string
-	filterEmpty := func(a []string) {
-		for _, s := range(a) {
-			if len(s) > 0 {
-				ar = append(ar, s)
-			}
-		}
-	}
-	filterEmpty(a1)
-	filterEmpty(a2)
-	return ar
-}
-
 func removePathPrefix(val string) string {
 	for _, prefix := range prefixes {
 		val = strings.TrimPrefix(val, prefix)
 	}
 	return val
 }
+*/

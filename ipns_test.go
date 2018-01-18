@@ -58,6 +58,6 @@ func TestIpnsResolve(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !res.Cid.Equals(pcid) {
-		t.Fatal("Got back incorrect value")
+		t.Fatal("Got back incorrect value", res.Cid, pcid)
 	}
 }

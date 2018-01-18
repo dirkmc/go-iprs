@@ -3,6 +3,7 @@ package iprs_resolver
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	ld "github.com/dirkmc/go-iprs/ipld"
@@ -16,40 +17,60 @@ import (
 const DefaultIprsCacheTTL = time.Minute
 
 type IprsResolver struct {
+	parent      *Resolver
 	vstore      routing.ValueStore
 	dag         node.NodeGetter
 	cache       *ResolverCache
 	verifier    *rec.MasterRecordVerifier
 }
 
-func NewIprsResolver(vs routing.ValueStore, dag node.NodeGetter, opts *CacheOpts) *IprsResolver {
+func NewIprsResolver(parent *Resolver, vs routing.ValueStore, dag node.NodeGetter, opts *CacheOpts) *IprsResolver {
 	if opts == nil {
 		ttl := DefaultIprsCacheTTL
 		opts = &CacheOpts{10, &ttl}
 	}
 	v := rec.NewMasterRecordVerifier(dag)
-	rs := IprsResolver{vstore: vs, dag: dag, verifier: v}
+	rs := IprsResolver{parent: parent, vstore: vs, dag: dag, verifier: v}
 	rs.cache = NewResolverCache(&rs, opts)
 	return &rs
 }
 
-func (r *IprsResolver) Resolve(ctx context.Context, iprsKey rsp.IprsPath) (*cid.Cid, []string, error) {
-	log.Debugf("IPRS Resolve %s", iprsKey)
+func (r *IprsResolver) Accept(p string) bool {
+	parts := strings.Split(p, "/")
+	if len(parts) < 4 {
+		return false
+	}
+	if parts[1] != "iprs" {
+		return false
+	}
+	_, err := cid.Decode(parts[2])
+	return err == nil
+}
+
+func (r *IprsResolver) Resolve(ctx context.Context, p string) (string, []string, error) {
+	log.Debugf("IPRS Resolve %s", p)
+
+	if !r.Accept(p) {
+		return "", nil, fmt.Errorf("IPRS resolver cannot resolve %s", p)
+	}
+	parts := strings.Split(p, "/")
 
 	// Use the routing system to get the entry
-	val, err := r.cache.GetValue(ctx, iprsKey.String())
+	k := "/iprs/" + parts[2] + "/" + parts[3]
+	val, err := r.cache.GetValue(ctx, k)
 	if err != nil {
-		log.Warningf("IprsResolver get failed for %s", iprsKey)
-		return nil, nil, err
+		log.Warningf("IprsResolver get failed for %s", k)
+		return "", nil, err
 	}
 
-	c, err := cid.Parse(val)
-	return c, []string{}, err
+	log.Debugf("IPRS Resolve %s successful", k)
+	return string(val), parts[4:], nil
 }
 
 func (r *IprsResolver) GetValue(ctx context.Context, k string) ([]byte, *time.Time, error) {
 	iprsKey, err := rsp.FromString(k)
 	if err != nil {
+		log.Warningf("Failed to parse IPRS record path %s", k)
 		return nil, nil, err
 	}
 
@@ -89,19 +110,12 @@ func (r *IprsResolver) GetValue(ctx context.Context, k string) ([]byte, *time.Ti
 	}
 
 	eol := r.getEol(record)
-	val := record.Value.Bytes()
-	err = r.checkValue(val)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to parse IPRS record target [%s] at %s: %s", val, iprsKey, err)
+	val := record.Value
+	if !r.parent.IsResolvable(string(val)) {
+		return nil, nil, fmt.Errorf("Failed to parse IPRS record target [%s] at %s", val, iprsKey)
 	}
 
 	return val, eol, nil
-}
-
-func (r *IprsResolver) checkValue(b []byte) error {
-	// The target must be a CID
-	_, err := cid.Parse(b)
-	return err
 }
 
 func (r *IprsResolver) getEol(record *rec.Record) *time.Time {

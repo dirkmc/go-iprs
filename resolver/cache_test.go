@@ -24,12 +24,16 @@ func getEolRecord(t *testing.T, c *cid.Cid, ts time.Time, r routing.ValueStore) 
 	}
 	vl := rec.NewEolRecordValidation(ts)
 	s := rec.NewKeyRecordSigner(pk)
-	record, err := rec.NewRecord(vl, s, c)
+	record, err := rec.NewRecord(vl, s, c.Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	iprsKey, err := s.BasePath()
+	basePath, err := s.BasePath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	iprsKey, err := rsp.FromString(basePath.String() + "/myrec")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,12 +59,16 @@ func TestCacheSizeZero(t *testing.T) {
 	publisher.Publish(ctx, iprsKey, eolRecord)
 
 	// Get the entry value (cache is size zero so it will be retrieved from routing)
-	rs := NewIprsResolver(r, dag, &CacheOpts{0, nil})
-	res, _, err := rs.Resolve(ctx, iprsKey)
+	rs := NewIprsResolver(nil, r, dag, &CacheOpts{0, nil})
+	res, _, err := rs.Resolve(ctx, iprsKey.String())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.Equals(c) {
+	resc, err := cid.Parse([]byte(res))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !resc.Equals(c) {
 		t.Fatal("Got back incorrect value")
 	}
 
@@ -72,7 +80,7 @@ func TestCacheSizeZero(t *testing.T) {
 	}
 
 	// Get the entry value again
-	res, _, err = rs.Resolve(ctx, iprsKey)
+	res, _, err = rs.Resolve(ctx, iprsKey.String())
 	if err == nil {
 		t.Fatal("Expected key not found error")
 	}
@@ -84,7 +92,7 @@ func TestCacheSizeTen(t *testing.T) {
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
 	r := tu.NewMockValueStore(context.Background(), id, dstore)
-	rs := NewIprsResolver(r, dag, &CacheOpts{10, nil})
+	rs := NewIprsResolver(nil, r, dag, &CacheOpts{10, nil})
 	publisher := psh.NewDHTPublisher(r, dag)
 
 	ts := time.Now().Add(time.Hour)
@@ -98,11 +106,15 @@ func TestCacheSizeTen(t *testing.T) {
 	publisher.Publish(ctx, iprsKey, eolRecord)
 
 	// Get the entry value
-	res, _, err := rs.Resolve(ctx, iprsKey)
+	res, _, err := rs.Resolve(ctx, iprsKey.String())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.Equals(c) {
+	resc, err := cid.Parse([]byte(res))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !resc.Equals(c) {
 		t.Fatal("Got back incorrect value")
 	}
 
@@ -113,11 +125,15 @@ func TestCacheSizeTen(t *testing.T) {
 	}
 
 	// Get the entry value again
-	res, _, err = rs.Resolve(ctx, iprsKey)
+	res, _, err = rs.Resolve(ctx, iprsKey.String())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.Equals(c) {
+	resc, err = cid.Parse([]byte(res))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !resc.Equals(c) {
 		t.Fatal("Got back incorrect value")
 	}
 }
@@ -128,7 +144,7 @@ func TestCacheEolExpired(t *testing.T) {
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
 	r := tu.NewMockValueStore(context.Background(), id, dstore)
-	rs := NewIprsResolver(r, dag, &CacheOpts{10, nil})
+	rs := NewIprsResolver(nil, r, dag, &CacheOpts{10, nil})
 	publisher := psh.NewDHTPublisher(r, dag)
 
 	ts := time.Now().Add(time.Millisecond * 100)
@@ -142,11 +158,15 @@ func TestCacheEolExpired(t *testing.T) {
 	publisher.Publish(ctx, iprsKey, eolRecord)
 
 	// Get the entry value
-	res, _, err := rs.Resolve(ctx, iprsKey)
+	res, _, err := rs.Resolve(ctx, iprsKey.String())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.Equals(c) {
+	resc, err := cid.Parse([]byte(res))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !resc.Equals(c) {
 		t.Fatal("Got back incorrect value")
 	}
 
@@ -160,7 +180,7 @@ func TestCacheEolExpired(t *testing.T) {
 	}
 
 	// Get the entry value again. Should have expired
-	res, _, err = rs.Resolve(ctx, iprsKey)
+	res, _, err = rs.Resolve(ctx, iprsKey.String())
 	if err == nil {
 		t.Fatal("Expected key not found error")
 	}
@@ -172,7 +192,7 @@ func TestCacheTimeRangeExpired(t *testing.T) {
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
 	r := tu.NewMockValueStore(context.Background(), id, dstore)
-	rs := NewIprsResolver(r, dag, &CacheOpts{10, nil})
+	rs := NewIprsResolver(nil, r, dag, &CacheOpts{10, nil})
 	publisher := psh.NewDHTPublisher(r, dag)
 
 	pk, _, err := testutil.RandTestKeyPair(512)
@@ -191,11 +211,15 @@ func TestCacheTimeRangeExpired(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := rec.NewKeyRecordSigner(pk)
-	rangeRecord, err := rec.NewRecord(vl, s, c)
+	rangeRecord, err := rec.NewRecord(vl, s, c.Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
-	iprsKey, err := s.BasePath()
+	basePath, err := s.BasePath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	iprsKey, err := rsp.FromString(basePath.String() + "/myrec")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,11 +228,15 @@ func TestCacheTimeRangeExpired(t *testing.T) {
 	publisher.Publish(ctx, iprsKey, rangeRecord)
 
 	// Get the entry value
-	res, _, err := rs.Resolve(ctx, iprsKey)
+	res, _, err := rs.Resolve(ctx, iprsKey.String())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.Equals(c) {
+	resc, err := cid.Parse([]byte(res))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !resc.Equals(c) {
 		t.Fatal("Got back incorrect value")
 	}
 
@@ -222,7 +250,7 @@ func TestCacheTimeRangeExpired(t *testing.T) {
 	}
 
 	// Get the entry again. Should have expired
-	res, _, err = rs.Resolve(ctx, iprsKey)
+	res, _, err = rs.Resolve(ctx, iprsKey.String())
 	if err == nil {
 		t.Fatal("Expected key not found error")
 	}

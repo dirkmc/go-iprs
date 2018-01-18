@@ -9,6 +9,7 @@ import (
 	rec "github.com/dirkmc/go-iprs/record"
 	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 	rsv "github.com/dirkmc/go-iprs/resolver"
+	rsp "github.com/dirkmc/go-iprs/path"
 	tu "github.com/dirkmc/go-iprs/test"
 	//	path "github.com/ipfs/go-ipfs/path"
 	dstest "github.com/ipfs/go-ipfs/merkledag/test"
@@ -117,11 +118,15 @@ func TestPublishAndResolve(t *testing.T) {
 	eol := time.Now().Add(time.Hour)
 	validation := rec.NewEolRecordValidation(eol)
 	signer := rec.NewKeyRecordSigner(pk)
-	record, err := rec.NewRecord(validation, signer, p1)
+	record, err := rec.NewRecord(validation, signer, p1.Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
-	iprsKey, err := signer.BasePath()
+	basePath, err := signer.BasePath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	iprsKey, err := rsp.FromString(basePath.String() + "/myrec")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +155,7 @@ func TestPublishAndResolve(t *testing.T) {
 	}
 	eol = time.Now().Add(time.Minute * 10)
 	validation = rec.NewEolRecordValidation(eol)
-	record, err = rec.NewRecord(validation, signer, p2)
+	record, err = rec.NewRecord(validation, signer, p2.Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,6 +179,8 @@ func TestPublishAndResolve(t *testing.T) {
 }
 
 func TestPublishAndResolveSharedKey(t *testing.T) {
+	// logging.SetAllLoggers(gologging.DEBUG)
+
 	ctx := context.Background()
 	dag := dstest.Mock()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
@@ -200,23 +207,27 @@ func TestPublishAndResolveSharedKey(t *testing.T) {
 	eol := time.Now().Add(time.Hour)
 	validation := rec.NewEolRecordValidation(eol)
 	signer := rec.NewCertRecordSigner(caCert, caPk)
-	record, err := rec.NewRecord(validation, signer, p1)
+	record, err := rec.NewRecord(validation, signer, p1.Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
-	iprsBasePath, err := signer.BasePath()
+	basePath, err := signer.BasePath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	iprsKey, err := rsp.FromString(basePath.String() + "/myrec")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Publish the record
-	err = rs.Publish(ctx, iprsBasePath, record)
+	err = rs.Publish(ctx, iprsKey, record)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Retrieve the record value
-	res, p, err := rs.Resolve(ctx, iprsBasePath.String()+"/my/path")
+	// Retrieve the record value with an appended path
+	res, p, err := rs.Resolve(ctx, iprsKey.String()+"/my/path")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,6 +237,7 @@ func TestPublishAndResolveSharedKey(t *testing.T) {
 		t.Fatal("Got back incorrect value")
 	}
 
+	// Should be the appended path
 	if len(p) != 2 || p[0] != "my" || p[1] != "path" {
 		t.Fatal("Got back incorrect path value")
 	}
@@ -238,19 +250,19 @@ func TestPublishAndResolveSharedKey(t *testing.T) {
 	eol = time.Now().Add(time.Minute * 10)
 	validation = rec.NewEolRecordValidation(eol)
 	signer = rec.NewCertRecordSigner(childCert, childPk)
-	record, err = rec.NewRecord(validation, signer, p2)
+	record, err = rec.NewRecord(validation, signer, p2.Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Publish the record to the same path
-	err = rs.Publish(ctx, iprsBasePath, record)
+	err = rs.Publish(ctx, iprsKey, record)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Retrieve the record value
-	res, _, err = rs.Resolve(ctx, iprsBasePath.String())
+	res, _, err = rs.Resolve(ctx, iprsKey.String())
 	if err != nil {
 		t.Fatal(err)
 	}

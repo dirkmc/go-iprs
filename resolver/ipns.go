@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	isd "gx/ipfs/QmZmmuAXgX73UQmX1jRKjTGmjzq24Jinqkq8vzkBtno4uX/go-is-domain"
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 	rsp "github.com/dirkmc/go-iprs/path"
 	nspb "github.com/ipfs/go-ipfs/namesys/pb"
 	routing "gx/ipfs/QmPCGUjMRuBcPybZFpjhzpifwPP9wPRoiy5geTQKU4vqWA/go-libp2p-routing"
@@ -19,32 +19,51 @@ import (
 const DefaultIpnsCacheTTL = time.Minute
 
 type IpnsResolver struct {
+	parent      *Resolver
 	vstore      routing.ValueStore
 	cache       *ResolverCache
 }
 
-func NewIpnsResolver(vs routing.ValueStore, opts *CacheOpts) *IpnsResolver {
+func NewIpnsResolver(parent *Resolver, vs routing.ValueStore, opts *CacheOpts) *IpnsResolver {
 	if opts == nil {
 		ttl := DefaultIpnsCacheTTL
 		opts = &CacheOpts{10, &ttl}
 	}
-	rs := IpnsResolver{vstore: vs}
+	rs := IpnsResolver{parent: parent, vstore: vs}
 	rs.cache = NewResolverCache(&rs, opts)
 	return &rs
 }
 
-func (r *IpnsResolver) Resolve(ctx context.Context, iprsKey rsp.IprsPath) (string, []string, error) {
-	log.Debugf("IPNS Resolve %s", iprsKey)
+func (r *IpnsResolver) Accept(p string) bool {
+	parts := strings.Split(p, "/")
+	if len(parts) < 3 {
+		return false
+	}
+	if parts[1] != "ipns" {
+		return false
+	}
+	_, err := cid.Decode(parts[2])
+	return err == nil
+}
+
+func (r *IpnsResolver) Resolve(ctx context.Context, p string) (string, []string, error) {
+	log.Debugf("IPNS Resolve %s", p)
+
+	if !r.Accept(p) {
+		return "", nil, fmt.Errorf("IPNS resolver cannot resolve %s", p)
+	}
+	parts := strings.Split(p, "/")
 
 	// Use the routing system to get the entry
-	val, err := r.cache.GetValue(ctx, iprsKey.String())
+	k := "/ipns/" + parts[2]
+	val, err := r.cache.GetValue(ctx, k)
 	if err != nil {
-		log.Warningf("IpnsResolver get failed for %s", iprsKey)
+		log.Warningf("IpnsResolver get failed for %s", k)
 		return "", nil, err
 	}
 
-	log.Debugf("IPNS Resolve %s => %s", iprsKey, val)
-	return rsp.ParseTargetToPathParts(val)
+	log.Debugf("IPNS Resolve %s => %s", k, val)
+	return string(val), parts[3:], nil
 }
 
 func (r *IpnsResolver) GetValue(ctx context.Context, k string) ([]byte, *time.Time, error) {
@@ -104,29 +123,11 @@ func (r *IpnsResolver) GetValue(ctx context.Context, k string) ([]byte, *time.Ti
 
 	eol := r.getEol(entry)
 	val := entry.GetValue()
-	err = r.checkValue(val)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to parse IPNS record target [%s] at %s: %s", entry.GetValue(), iprsKey, err)
+	if !r.parent.IsResolvable(string(val)) {
+		return nil, nil, fmt.Errorf("Failed to parse IPNS record target [%s] at %s", val, iprsKey)
 	}
 
 	return val, eol, nil
-}
-
-func (r *IpnsResolver) checkValue(b []byte) error {
-	// If the target can be parsed to a CID then it's ok
-	_, _, err := rsp.ParseTargetToCid(b)
-	if err == nil {
-		return nil
-	}
-
-	// If the target can be parsed to a domain then it's also ok
-	// /ipns/<domain>
-	parts := strings.Split(string(b), "/")
-	if len(parts) > 2 && isd.IsDomain(parts[1]) {
-		return nil
-	}
-
-	return fmt.Errorf("target %s is not CID or domain name", b)
 }
 
 func (r *IpnsResolver) entryDataForSig(e *nspb.IpnsEntry) []byte {

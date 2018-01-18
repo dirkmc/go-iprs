@@ -54,7 +54,7 @@ type Node struct {
 	cborld.Node
 
 	Version   uint64
-	Value     *cid.Cid
+	Value     []byte
 	Validity  *Validity
 	Signature []byte
 }
@@ -68,7 +68,7 @@ func (n *Node) Loggable() map[string]interface{} {
 
 var _ node.Node = (*Node)(nil)
 
-func NewIprsNode(value *cid.Cid, validity *Validity, signature []byte) (*Node, error) {
+func NewIprsNode(value []byte, validity *Validity, signature []byte) (*Node, error) {
 	// Store the fields as a CBOR map
 	obj := map[string]interface{}{
 		"version":   Version,
@@ -104,26 +104,40 @@ func DecodeIprsBlock(block blocks.Block) (*Node, error) {
 	if err != nil || !ok {
 		return nil, errors.New("incorrectly formatted version")
 	}
-	vall, _, err := n.ResolveLink([]string{"value"})
-	if err != nil {
-		return nil, errors.New("incorrectly formatted value link")
+
+	vali, _, err := n.Resolve([]string{"value"})
+	val, ok := vali.([]byte)
+	if err != nil || !ok {
+		return nil, errors.New("incorrectly formatted value")
 	}
+
 	_, _, err = n.Resolve([]string{"validity"})
 	if err != nil {
 		return nil, errors.New("incorrectly formatted validity")
 	}
+
 	vfti, _, err := n.Resolve([]string{"validity", "verificationType"})
 	vft, ok := vfti.(uint64)
 	if err != nil || !ok {
 		return nil, errors.New("incorrectly formatted verificationType")
 	}
+
 	vlti, _, err := n.Resolve([]string{"validity", "validationType"})
 	vlt, ok := vlti.(uint64)
 	if err != nil || !ok {
 		return nil, errors.New("incorrectly formatted validationType")
 	}
+
 	verificationi, _, err := n.Resolve([]string{"validity", "verification"})
+	if err != nil {
+		return nil, errors.New("incorrectly formatted validity verification")
+	}
+
 	validationi, _, err := n.Resolve([]string{"validity", "validation"})
+	if err != nil {
+		return nil, errors.New("incorrectly formatted validity validation")
+	}
+
 	sigi, _, err := n.Resolve([]string{"signature"})
 	sig, ok := sigi.([]byte)
 	if err != nil || !ok {
@@ -133,7 +147,7 @@ func DecodeIprsBlock(block blocks.Block) (*Node, error) {
 	return &Node{
 		Node:    *n,
 		Version: version,
-		Value:   vall.Cid,
+		Value:   val,
 		Validity: &Validity{
 			VerificationType: IprsVerificationType(vft),
 			Verification:     verificationi,

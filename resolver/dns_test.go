@@ -28,6 +28,12 @@ func (m *mockDNS) lookupTXT(name string) (txt []string, err error) {
 }
 
 func TestDNSEntryParsing(t *testing.T) {
+	dag := dstest.Mock()
+	dstore := dssync.MutexWrap(ds.NewMapDatastore())
+	id := testutil.RandIdentityOrFatal(t)
+	vs := tu.NewMockValueStore(context.Background(), id, dstore)
+	r := NewResolver(vs, dag, NoCacheOpts)
+
 	goodEntries := []string{
 		"QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD",
 		"dnslink=/ipfs/QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD",
@@ -57,8 +63,9 @@ func TestDNSEntryParsing(t *testing.T) {
 		"dnslink=/iprs/QmYhE8xgFCjGcz6PHgnvJz5NOTCORRECT/a",
 	}
 
+	dns := r.resolvers[0].(*DNSResolver)
 	for _, e := range goodEntries {
-		_, err := parseEntry(e)
+		_, err := dns.parseEntry(e)
 		if err != nil {
 			t.Log("expected entry to parse correctly!")
 			t.Log(e)
@@ -67,7 +74,7 @@ func TestDNSEntryParsing(t *testing.T) {
 	}
 
 	for _, e := range badEntries {
-		_, err := parseEntry(e)
+		_, err := dns.parseEntry(e)
 		if err == nil {
 			t.Log("expected entry parse to fail!")
 			t.Fatal(e)
@@ -154,19 +161,16 @@ func newMockDNS() *mockDNS {
 }
 
 func TestDNSResolution(t *testing.T) {
-	//logging.SetAllLoggers(gologging.DEBUG)
-	mock := newMockDNS()
-	dns := &DNSResolver{lookupTXT: mock.lookupTXT}
-	dns.cache = NewResolverCache(dns, nil)
-
+	// logging.SetAllLoggers(gologging.DEBUG)
 	dag := dstest.Mock()
 	dstore := dssync.MutexWrap(ds.NewMapDatastore())
 	id := testutil.RandIdentityOrFatal(t)
 	vs := tu.NewMockValueStore(context.Background(), id, dstore)
-	ipns := NewIpnsResolver(vs, nil)
-	iprs := NewIprsResolver(vs, dag, nil)
-
-	r := &Resolver {dns, iprs, ipns}
+	r := NewResolver(vs, dag, NoCacheOpts)
+	mock := newMockDNS()
+	dns := &DNSResolver{parent: r, lookupTXT: mock.lookupTXT}
+	dns.cache = NewResolverCache(dns, nil)
+	r.resolvers[0] = dns
 
 	testResolution(t, r, "/iprs/multihash.example.com", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD", nil)
 	testResolution(t, r, "/iprs/ipfs.example.com", DefaultDepthLimit, "QmY3hE8xgFCjGcz6PHgnvJz5HZi1BaKRfPkn1ghZUcYMjD", nil)
@@ -205,7 +209,7 @@ func TestDNSResolution(t *testing.T) {
 func testResolution(t *testing.T, resolver *Resolver, name string, depth int, expected string, expError error) {
 	lnk, rest, err := resolver.Resolve(context.Background(), name, depth)
 	if err != nil {
-		if err != expError {
+		if !strings.Contains(err.Error(), expError.Error()) {
 			t.Fatal(fmt.Errorf(
 				"Expected %s with a depth of %d to have a '%s' error, but got '%s'",
 				name, depth, expError, err))

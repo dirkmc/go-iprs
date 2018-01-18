@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	ld "github.com/dirkmc/go-iprs/ipld"
-	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 )
 
 type PrepareSig func(interface{}) ([]byte, error)
@@ -33,7 +32,7 @@ func (s VdnSigPreparer) PrepareSig(t ld.IprsValidationType, v interface{}) ([]by
 
 var ValidationSigPreparer = VdnSigPreparer(map[ld.IprsValidationType]PrepareSig{})
 
-func dataForSig(val *cid.Cid, v *ld.Validity) ([]byte, error) {
+func dataForSig(val []byte, v *ld.Validity) ([]byte, error) {
 	vfnb, err := VerificationSigPreparer.PrepareSig(v.VerificationType, v.Verification)
 	if err != nil {
 		return nil, err
@@ -44,7 +43,7 @@ func dataForSig(val *cid.Cid, v *ld.Validity) ([]byte, error) {
 	}
 
 	return bytes.Join([][]byte{
-		val.Bytes(),
+		val,
 		[]byte(fmt.Sprint(v.VerificationType)),
 		vfnb,
 		[]byte(fmt.Sprint(v.ValidationType)),

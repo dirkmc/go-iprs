@@ -27,7 +27,7 @@ func setupNewEolRecordFunc(t *testing.T) func(time.Time, string) *Record {
 		}
 		vl := NewEolRecordValidation(eol)
 		s := NewKeyRecordSigner(pk)
-		r, err := NewRecord(vl, s, c)
+		r, err := NewRecord(vl, s, c.Bytes())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -45,8 +45,8 @@ func TestEolOrdering(t *testing.T) {
 	p2 := "/ipfs/QmatmE9msSfkKxoffpHwNLNKgwZG8eT9Bud6YoPab52vpy"
 
 	r1 := NewRecord(ts.Add(time.Hour), p1)
-	r2 := NewRecord(ts.Add(time.Hour*2), p1)
-	r3 := NewRecord(ts.Add(time.Hour*2), p2)
+	r2 := NewRecord(ts.Add(time.Hour*2), p2)
+	r3 := NewRecord(ts.Add(time.Hour*2), p1)
 
 	// r1 is the only record, I hope it gets this right
 	assertEolSelected(t, r1, r1)

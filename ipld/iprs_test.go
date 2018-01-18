@@ -26,7 +26,7 @@ func TestMarshalIprsNodeRoundtrip(t *testing.T) {
 	signature := []byte("sig")
 
 	// 1. Newly constructed Node
-	o, err := NewIprsNode(valueCid, validity, signature)
+	o, err := NewIprsNode(valueCid.Bytes(), validity, signature)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,23 +52,18 @@ func TestMarshalIprsNodeRoundtrip(t *testing.T) {
 			t.Fatalf("node CID is of Type %d, expected %d", n.Cid().Type(), CodecIprsCbor)
 		}
 
-		// 1. Link to Value
-		// 2. Link in Verification data added above
-		if len(n.Links()) != 2 {
-			t.Fatalf("have %d links, expected %d", len(n.Links()), 2)
+		// Link in Verification data added above
+		if len(n.Links()) != 1 {
+			t.Fatalf("have %d links, expected %d", len(n.Links()), 1)
 		}
 
-		lnk, rest, err := n.ResolveLink([]string{"value", "foo"})
-		if err != nil {
-			t.Fatal(err)
+		vali, _, err := n.Resolve([]string{"value"})
+		val, ok := vali.([]byte)
+		if err != nil || !ok {
+			t.Fatal("incorrectly formatted value")
 		}
-
-		if !lnk.Cid.Equals(valueCid) {
-			t.Fatal("expected value to be cid")
-		}
-
-		if len(rest) != 1 || rest[0] != "foo" {
-			t.Fatal("expected one path element 'foo' remaining after resolve")
+		if bytes.Compare(val, valueCid.Bytes()) != 0 {
+			t.Fatalf("value is %s, expected %s", val, valueCid)
 		}
 
 		versioni, _, err := n.Resolve([]string{"version"})

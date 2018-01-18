@@ -42,7 +42,7 @@ func TestCertRecordVerification(t *testing.T) {
 		}
 		vl := rec.NewEolRecordValidation(eol)
 		s := rec.NewCertRecordSigner(cert, pk)
-		rec, err := rec.NewRecord(vl, s, c)
+		rec, err := rec.NewRecord(vl, s, c.Bytes())
 		if err != nil {
 			t.Fatal(err)
 		}

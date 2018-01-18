@@ -30,7 +30,7 @@ func setupNewRangeRecordFunc(t *testing.T) func(*time.Time, *time.Time, string) 
 			t.Fatal(err)
 		}
 		s := NewKeyRecordSigner(pk)
-		r, err := NewRecord(vl, s, c)
+		r, err := NewRecord(vl, s, c.Bytes())
 		if err != nil {
 			t.Fatal(err)
 		}
