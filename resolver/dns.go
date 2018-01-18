@@ -138,27 +138,3 @@ func (r *DNSResolver) tryParseDnsLink(txt string) (string, error) {
 
 	return "", fmt.Errorf("Not a valid dnslink entry: %s", txt)
 }
-/*
-// Must be of the form
-// /iprs/<cid>
-// /iprs/www.example.com
-func isIprsPath(txt string) bool {
-	parts := strings.Split(txt, "/")
-
-	if len(parts) < 3 {
-		return false
-	}
-	if parts[0] != "" {
-		return false
-	}
-	if parts[1] != "iprs" {
-		return false
-	}
-	if isd.IsDomain(parts[2]) {
-		return true
-	}
-
-	_, err := cid.Parse(parts[2])
-	return err == nil
-}
-*/
