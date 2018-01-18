@@ -14,7 +14,6 @@ const Version = 1
 
 // TODO: Add to https://github.com/ipfs/go-cid/blob/master/cid.go
 const CodecIprsCbor = 0xd0
-const CodecIpns = 0xd8
 
 type IprsVerificationType uint64
 
