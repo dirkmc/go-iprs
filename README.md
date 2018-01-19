@@ -136,7 +136,7 @@ err = rs.Publish(ctx, iprsKey, record2)
 
 ```go
 iprsPath := GetIprsPath()
-val, path, err := rs.resolve(ctx, iprsPath)
+val, path, err := rs.Resolve(ctx, iprsPath)
 fmt.Printf("Value %s with path %s", val, path)
 ```
 
