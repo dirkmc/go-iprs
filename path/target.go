@@ -16,8 +16,6 @@ import (
 // - Raw cid
 //   <cid>
 func ParseTargetToCid(val []byte) (*cid.Cid, []string, error) {
-	var c *cid.Cid
-
 	// Check for old style IPNS record
 	valh, err := mh.Cast(val)
 	if err == nil {
@@ -25,10 +23,16 @@ func ParseTargetToCid(val []byte) (*cid.Cid, []string, error) {
 		return cid.NewCidV0(valh), []string{}, nil
 	}
 
-	// Not a raw multihash, check for cid
+	// Try casting raw bytes to a CID
+	c, err := cid.Cast(val)
+	if err == nil {
+		return c, []string{}, nil
+	}
+
+	// Not a raw multihash or CID, check for stringified CID
 	valstr := string(val)
 
-	// If it has no path components try parsing it as a raw cid
+	// If it has no path components try parsing it as a cid
 	if !strings.Contains(valstr, "/") {
 		c, err = cid.Parse(valstr)
 		if err != nil {

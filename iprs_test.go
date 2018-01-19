@@ -1,15 +1,17 @@
 package iprs
 
 import (
+	"bytes"
 	"context"
-	//	"fmt"
 	"testing"
 	"time"
 
 	rec "github.com/dirkmc/go-iprs/record"
-	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 	rsv "github.com/dirkmc/go-iprs/resolver"
 	tu "github.com/dirkmc/go-iprs/test"
+	b58 "github.com/mr-tron/base58/base58"
+	gipld "gx/ipfs/Qmajzb6i5uwyfzcBtdqHYx94qSAMKZHBFouGV1xVbAKES9/go-ipld-git"
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 	//	path "github.com/ipfs/go-ipfs/path"
 	dstest "github.com/ipfs/go-ipfs/merkledag/test"
 	u "gx/ipfs/QmPsAfmDBnZN3kZGSuNwvCNDZiHneERSKmRcFyG3UkvcT3/go-ipfs-util"
@@ -260,6 +262,74 @@ func TestPublishAndResolveSharedKey(t *testing.T) {
 
 	// Should be the newly published record value
 	if !res.Cid.Equals(p2) {
+		t.Fatal("Got back incorrect value")
+	}
+}
+
+const gitBlob = "Ai5Bz5C6XUCZ7S2mjBUka9zd4VjbrJ1oZGxHmUw48Ar2aLoynCpcenY7CF9f8heTKcwK8a15UgiuTTcUmh5jMpLF" +
+	"utMTY7qmbR8ANPM92sRJtsHXgP6okz2GGuUJwuLkBWv5SjFgutNhbGrvgsEXNNYszxAeTPDEfcHfPJpJu5tGn7skggY5yRzJoFGXj55e" +
+	"VDJ9NxsVfTsaHZs1qrmPjuJeMHpXNWzd5cE2JuPsA68eRCcXc2qfNyFLjvWHmcyuxh5uTDtRbw3kx7Nkvdzkg45VrgBvyuvYv6PFcDBm" +
+	"fcLoQTgtuSssbotvZr6ongYjH4tLoKTY7tP4E9WpKvvXsmodJTcJgHXyJBA4svKZpyva9aQi4KdsQZ6nZKkvWEvND6rHWGEmQ5zHf3Ef" +
+	"sD2V5yPoKbe12t4ZBnv8VKac8eupqQLJsnXGx5jW78hD9s2pYR9eyh4xyZosh7VfthM26jhhSm9N6hmAWbDRv6F7pTbQkagMWQ5bkje9" +
+	"jyyMNeX3ouiWg1uCVx59xEV4MB4AZVXi4RtxJL3nqJ4C9A4fcUHMUsG93VoPCMHWvkpjNRkBb2U47roPGuf17u7EbbYpKcD1UJoAU2eW" +
+	"vRfCGA5y6U4vPDjf1DydWAmupgdUNMCh1TuSVeGZ65LZEJev3G1dcJsbqgKubrbRn3UX947S4LmkPd1WXiXHaiGCgLMktgxe7Tbzp5rF" +
+	"vx9L1vDEwEogEndTvWt1KhS36jspGqKPom2aba"
+
+func TestPublishAndResolveGitNode(t *testing.T) {
+	// logging.SetAllLoggers(gologging.DEBUG)
+
+	ctx := context.Background()
+	dag := dstest.Mock()
+	dstore := dssync.MutexWrap(ds.NewMapDatastore())
+	id := testutil.RandIdentityOrFatal(t)
+	r := tu.NewMockValueStore(ctx, id, dstore)
+	rs := NewRecordSystem(r, dag, rsv.NoCacheOpts)
+
+	// Generate a key for signing the records
+	sr := u.NewSeededRand(15)
+	pk, _, err := ci.GenerateKeyPairWithReader(ci.RSA, 1024, sr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create an EOL record with a GitRaw CID
+	blob, err := b58.Decode(gitBlob)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	obj, err := gipld.ParseCompressedObject(bytes.NewReader(blob))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p1 := obj.Cid()
+	eol := time.Now().Add(time.Hour)
+	validation := rec.NewEolRecordValidation(eol)
+	signer := rec.NewKeyRecordSigner(pk)
+	record, err := rec.NewRecord(validation, signer, p1.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	iprsKey, err := signer.BasePath("myrec")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Publish the record
+	err = rs.Publish(ctx, iprsKey, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Retrieve the record value
+	res, _, err := rs.Resolve(ctx, iprsKey.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Should be the published record value
+	if !res.Cid.Equals(p1) {
 		t.Fatal("Got back incorrect value")
 	}
 }
