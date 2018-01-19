@@ -118,7 +118,7 @@ if err != nil {
 
 // Create a record with the child certificate
 // Value is CID of Bob's commit
-p2, err := cid.Parse("/ipfs/ipfsHashOfAlicesCommit")
+p2, err := cid.Parse("/ipfs/ipfsHashOfBobsCommit")
 
 validation := rec.NewEolRecordValidation(eol)
 signer := rec.NewCertRecordSigner(childCert, childPk)
@@ -136,12 +136,8 @@ err = rs.Publish(ctx, iprsKey, record2)
 
 ```go
 iprsPath := GetIprsPath()
-valueStore := CreateAValueStore()
-rs := NewRecordSystem(valueStore, 20)
-val, err := rs.resolve(ctx, iprsPath)
-if err == nil {
-	fmt.Println(val)
-}
+val, path, err := rs.resolve(ctx, iprsPath)
+fmt.Printf("Value %s with path %s", val, path)
 ```
 
 ### Using Gx and Gx-go
