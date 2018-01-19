@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 
+	rsp "github.com/dirkmc/go-iprs/path"
+	node "gx/ipfs/QmNwUEK7QbwSqyKBu3mMtToo8SUc6wQJ7gdZq4gGGJqfnf/go-ipld-format"
 	routing "gx/ipfs/QmPCGUjMRuBcPybZFpjhzpifwPP9wPRoiy5geTQKU4vqWA/go-libp2p-routing"
 	logging "gx/ipfs/QmSpJByNKFX1sCsHBEp3R73FL4NF6FnQTEGyNAXHm2GS52/go-log"
-	node "gx/ipfs/QmNwUEK7QbwSqyKBu3mMtToo8SUc6wQJ7gdZq4gGGJqfnf/go-ipld-format"
-	rsp "github.com/dirkmc/go-iprs/path"
 )
 
 var log = logging.Logger("iprs.resolver")
@@ -31,13 +31,13 @@ var ErrResolveFailed = errors.New("Could not resolve name.")
 var ErrResolveRecursion = errors.New("Could not resolve name (recursion limit exceeded).")
 
 type ResolverOpts struct {
-	dns *CacheOpts
+	dns  *CacheOpts
 	iprs *CacheOpts
 	ipns *CacheOpts
 }
 
 var NoCacheOpts = &ResolverOpts{
-	dns: &CacheOpts{0, nil},
+	dns:  &CacheOpts{0, nil},
 	iprs: &CacheOpts{0, nil},
 	ipns: &CacheOpts{0, nil},
 }
@@ -102,11 +102,11 @@ func (r *Resolver) resolveWithAppendage(ctx context.Context, p string, depth int
 	}
 
 	// Recurse
-	return r.resolveWithAppendage(ctx, res, depth -1, appendParts(rest, apnd))
+	return r.resolveWithAppendage(ctx, res, depth-1, appendParts(rest, apnd))
 }
 
-func (r *Resolver) getResolver(p string) (resolver) {
-	for _, rsv := range(r.resolvers) {
+func (r *Resolver) getResolver(p string) resolver {
+	for _, rsv := range r.resolvers {
 		if rsv.Accept(p) {
 			return rsv
 		}
@@ -122,7 +122,7 @@ func (r *Resolver) IsResolvable(s string) bool {
 	}
 
 	// Check if the target can resolved by one of the resolvers
-	for _, rsv := range(r.resolvers) {
+	for _, rsv := range r.resolvers {
 		if rsv.Accept(s) {
 			return true
 		}
@@ -134,7 +134,7 @@ func (r *Resolver) IsResolvable(s string) bool {
 func appendParts(a1, a2 []string) []string {
 	var ar []string
 	filterEmpty := func(a []string) {
-		for _, s := range(a) {
+		for _, s := range a {
 			if len(s) > 0 {
 				ar = append(ar, s)
 			}

@@ -11,7 +11,7 @@ const DefaultResolverCacheTTL = time.Minute
 
 type CacheOpts struct {
 	size int
-	ttl *time.Duration
+	ttl  *time.Duration
 }
 
 type ValueGetter interface {
@@ -19,9 +19,9 @@ type ValueGetter interface {
 }
 
 type ResolverCache struct {
-	vg ValueGetter
-	cache       *lru.Cache
-	ttl         time.Duration
+	vg    ValueGetter
+	cache *lru.Cache
+	ttl   time.Duration
 }
 
 type cacheEntry struct {

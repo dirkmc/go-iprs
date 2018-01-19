@@ -5,17 +5,17 @@ import (
 	"testing"
 	"time"
 
-	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
-	rec "github.com/dirkmc/go-iprs/record"
-	psh "github.com/dirkmc/go-iprs/publisher"
 	rsp "github.com/dirkmc/go-iprs/path"
+	psh "github.com/dirkmc/go-iprs/publisher"
+	rec "github.com/dirkmc/go-iprs/record"
 	tu "github.com/dirkmc/go-iprs/test"
+	dstest "github.com/ipfs/go-ipfs/merkledag/test"
 	u "gx/ipfs/QmPsAfmDBnZN3kZGSuNwvCNDZiHneERSKmRcFyG3UkvcT3/go-ipfs-util"
 	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
-	dstest "github.com/ipfs/go-ipfs/merkledag/test"
 	testutil "gx/ipfs/QmeDA8gNhvRTsbrjEieay5wezupJDiky8xvCzDABbsGzmp/go-testutil"
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 	// gologging "github.com/whyrusleeping/go-logging"
 	// logging "github.com/ipfs/go-log"
 )
@@ -81,7 +81,7 @@ func TestKeyRecordVerification(t *testing.T) {
 	// on the network
 	unrelatedIprsKey := getIprsPathFromKey(t, otherpk, "otherrec")
 	publishNewRecord(unrelatedIprsKey, otherpk, ts.Add(time.Hour))
-	
+
 	// Record is not valid if the key is a different cid
 	// (even though the unrelated cid is retrievable by the
 	// PublicKeyManager, ie it's available on the network)

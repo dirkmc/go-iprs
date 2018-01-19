@@ -9,15 +9,15 @@ import (
 	"time"
 
 	c "github.com/dirkmc/go-iprs/certificate"
-	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 	rsp "github.com/dirkmc/go-iprs/path"
 	psh "github.com/dirkmc/go-iprs/publisher"
 	rec "github.com/dirkmc/go-iprs/record"
 	tu "github.com/dirkmc/go-iprs/test"
+	dstest "github.com/ipfs/go-ipfs/merkledag/test"
 	ds "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore"
 	dssync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
-	dstest "github.com/ipfs/go-ipfs/merkledag/test"
 	testutil "gx/ipfs/QmeDA8gNhvRTsbrjEieay5wezupJDiky8xvCzDABbsGzmp/go-testutil"
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 	// gologging "github.com/whyrusleeping/go-logging"
 	// logging "github.com/ipfs/go-log"
 )
@@ -124,83 +124,84 @@ func TestCertRecordVerification(t *testing.T) {
 	if err == nil {
 		t.Fatal("Failed to return error for signature with unrelated cert")
 	}
-/*
-	// Create a temporary CA certificate, sign a record with it and
-	// publish the record (which will publish the cert to the network as well)
-	tmpCaCert, tmpPk, err := tu.GenerateCACertificate("temporary ca cert")
-	if err != nil {
-		t.Fatal(err)
-	}
-	tmpCaCertIprsKey := getIprsPathFromCert(t, tmpCaCert, "/somePath")
-	e4 := NewRecord(tmpCaCertIprsKey, tmpPk, tmpCaCert, ts.Add(time.Hour))
+	/*
+		// Create a temporary CA certificate, sign a record with it and
+		// publish the record (which will publish the cert to the network as well)
+		tmpCaCert, tmpPk, err := tu.GenerateCACertificate("temporary ca cert")
+		if err != nil {
+			t.Fatal(err)
+		}
+		tmpCaCertIprsKey := getIprsPathFromCert(t, tmpCaCert, "/somePath")
+		e4 := NewRecord(tmpCaCertIprsKey, tmpPk, tmpCaCert, ts.Add(time.Hour))
 
-	// Record should verify correctly
-	err = verifier.VerifyRecord(ctx, tmpCaCertIprsKey, e4)
-	if err != nil {
-		t.Fatal(err)
-	}
+		// Record should verify correctly
+		err = verifier.VerifyRecord(ctx, tmpCaCertIprsKey, e4)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	// Delete the certificate from the network
-	deleteFromRouting(t, r, tmpCaCert)
+		// Delete the certificate from the network
+		deleteFromRouting(t, r, tmpCaCert)
 
-	// Record should now fail to verify because CA cert cannot be retrieved
-	// from the network
-	err = verifier.VerifyRecord(ctx, tmpCaCertIprsKey, e4)
-	if err == nil {
-		t.Fatal("Failed to return error for record with cert that is not available on the network")
-	}
+		// Record should now fail to verify because CA cert cannot be retrieved
+		// from the network
+		err = verifier.VerifyRecord(ctx, tmpCaCertIprsKey, e4)
+		if err == nil {
+			t.Fatal("Failed to return error for record with cert that is not available on the network")
+		}
 
-	// Create a temporary child certificate issued by the CA certificate,
-	// sign a record with it and publish the record (which will publish
-	// the child cert to the network as well)
-	tmpChildCert, tmpChildPk, err := tu.GenerateChildCertificate("tmp child cert", caCert, caPk)
-	if err != nil {
-		t.Fatal(err)
-	}
-	tmpChildCertIprsKey := getIprsPathFromCert(t, caCert, "/somePath")
-	e5 := NewRecord(tmpChildCertIprsKey, tmpChildPk, tmpChildCert, ts.Add(time.Hour))
+		// Create a temporary child certificate issued by the CA certificate,
+		// sign a record with it and publish the record (which will publish
+		// the child cert to the network as well)
+		tmpChildCert, tmpChildPk, err := tu.GenerateChildCertificate("tmp child cert", caCert, caPk)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tmpChildCertIprsKey := getIprsPathFromCert(t, caCert, "/somePath")
+		e5 := NewRecord(tmpChildCertIprsKey, tmpChildPk, tmpChildCert, ts.Add(time.Hour))
 
-	// Record signed with child cert should verify correctly
-	err = verifier.VerifyRecord(ctx, tmpChildCertIprsKey, e5)
-	if err != nil {
-		t.Fatal(err)
-	}
+		// Record signed with child cert should verify correctly
+		err = verifier.VerifyRecord(ctx, tmpChildCertIprsKey, e5)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	// Delete issuing certificate from the network
-	deleteFromRouting(t, r, caCert)
+		// Delete issuing certificate from the network
+		deleteFromRouting(t, r, caCert)
 
-	// Record should now fail to verify because issuing CA cert cannot
-	// be retrieved from the network
-	err = verifier.VerifyRecord(ctx, tmpChildCertIprsKey, e5)
-	if err == nil {
-		t.Fatal("Failed to return error for record with issuing cert that is not available on the network")
-	}
+		// Record should now fail to verify because issuing CA cert cannot
+		// be retrieved from the network
+		err = verifier.VerifyRecord(ctx, tmpChildCertIprsKey, e5)
+		if err == nil {
+			t.Fatal("Failed to return error for record with issuing cert that is not available on the network")
+		}
 
-	// Restore issuing CA certificate to the network
-	_, err = certManager.PutCertificate(ctx, caCert)
-	if err != nil {
-		t.Fatal(err)
-	}
+		// Restore issuing CA certificate to the network
+		_, err = certManager.PutCertificate(ctx, caCert)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	// Make sure record verifies correctly now that issuing
-	// cert is available
-	err = verifier.VerifyRecord(ctx, tmpChildCertIprsKey, e5)
-	if err != nil {
-		t.Fatal(err)
-	}
+		// Make sure record verifies correctly now that issuing
+		// cert is available
+		err = verifier.VerifyRecord(ctx, tmpChildCertIprsKey, e5)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	// Delete child certificate from the network
-	deleteFromRouting(t, r, tmpChildCert)
+		// Delete child certificate from the network
+		deleteFromRouting(t, r, tmpChildCert)
 
-	// Record should now fail to verify because child CA cert cannot
-	// be retrieved from the network (even though issuing cert can be
-	// retrieved from the network)
-	err = verifier.VerifyRecord(ctx, tmpChildCertIprsKey, e5)
-	if err == nil {
-		t.Fatal("Failed to return error for record with cert that is not available on the network")
-	}
+		// Record should now fail to verify because child CA cert cannot
+		// be retrieved from the network (even though issuing cert can be
+		// retrieved from the network)
+		err = verifier.VerifyRecord(ctx, tmpChildCertIprsKey, e5)
+		if err == nil {
+			t.Fatal("Failed to return error for record with cert that is not available on the network")
+		}
 	*/
 }
+
 /*
 func deleteFromRouting(t *testing.T, r *vs.MockValueStore, cert *x509.Certificate) {
 	certHash, err := c.GetCertificateHash(cert)

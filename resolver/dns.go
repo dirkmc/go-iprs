@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	isd "gx/ipfs/QmZmmuAXgX73UQmX1jRKjTGmjzq24Jinqkq8vzkBtno4uX/go-is-domain"
 	path "github.com/ipfs/go-ipfs/path"
+	isd "gx/ipfs/QmZmmuAXgX73UQmX1jRKjTGmjzq24Jinqkq8vzkBtno4uX/go-is-domain"
 )
 
 const DefaultDnsCacheTTL = time.Minute
@@ -17,8 +17,8 @@ type LookupTXTFunc func(name string) (txt []string, err error)
 
 // DNSResolver implements a Resolver on DNS domains
 type DNSResolver struct {
-	parent      *Resolver
-	cache       *ResolverCache
+	parent    *Resolver
+	cache     *ResolverCache
 	lookupTXT LookupTXTFunc
 }
 

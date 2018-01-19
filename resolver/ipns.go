@@ -7,20 +7,20 @@ import (
 	"strings"
 	"time"
 
-	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 	nspb "github.com/ipfs/go-ipfs/namesys/pb"
 	routing "gx/ipfs/QmPCGUjMRuBcPybZFpjhzpifwPP9wPRoiy5geTQKU4vqWA/go-libp2p-routing"
 	u "gx/ipfs/QmPsAfmDBnZN3kZGSuNwvCNDZiHneERSKmRcFyG3UkvcT3/go-ipfs-util"
 	proto "gx/ipfs/QmZ4Qi3GaRbjcx28Sme5eMH7RQjGkt8wHxt2a65oLaeFEV/gogo-protobuf/proto"
 	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
+	cid "gx/ipfs/QmeSrf6pzut73u6zLQkRFQ3ygt3k6XFT2kjdYP8Tnkwwyg/go-cid"
 )
 
 const DefaultIpnsCacheTTL = time.Minute
 
 type IpnsResolver struct {
-	parent      *Resolver
-	vstore      routing.ValueStore
-	cache       *ResolverCache
+	parent *Resolver
+	vstore routing.ValueStore
+	cache  *ResolverCache
 }
 
 func NewIpnsResolver(parent *Resolver, vs routing.ValueStore, opts *CacheOpts) *IpnsResolver {

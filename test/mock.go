@@ -23,7 +23,7 @@ type MockValueStore struct {
 	mockEmptyLocalStore bool
 }
 
-func defaultValidator(k string, v []byte) (error) { return nil }
+func defaultValidator(k string, v []byte) error         { return nil }
 func defaultSelector(k string, v [][]byte) (int, error) { return 0, nil }
 
 func NewMockValueStore(ctx context.Context, id testutil.Identity, dstore ds.Datastore) *MockValueStore {

@@ -62,7 +62,7 @@ func FromString(txt string) (IprsPath, error) {
 		return NilPath, fmt.Errorf("Bad IPRS Path [%s]", txt)
 	}
 
-	for i, p := range(parts) {
+	for i, p := range parts {
 		if i > 0 && p == "" {
 			return NilPath, fmt.Errorf("Bad IPRS Path [%s]", txt)
 		}

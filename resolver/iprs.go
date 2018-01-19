@@ -16,11 +16,11 @@ import (
 const DefaultIprsCacheTTL = time.Minute
 
 type IprsResolver struct {
-	parent      *Resolver
-	vstore      routing.ValueStore
-	dag         node.NodeGetter
-	cache       *ResolverCache
-	verifier    *rec.MasterRecordVerifier
+	parent   *Resolver
+	vstore   routing.ValueStore
+	dag      node.NodeGetter
+	cache    *ResolverCache
+	verifier *rec.MasterRecordVerifier
 }
 
 func NewIprsResolver(parent *Resolver, vs routing.ValueStore, dag node.NodeGetter, opts *CacheOpts) *IprsResolver {

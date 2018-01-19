@@ -71,7 +71,7 @@ func interfaceToStringTuple(o interface{}) ([]string, error) {
 		}
 		s = make([]string, len(a))
 		for i := range a {
-		    s[i], ok = a[i].(string)
+			s[i], ok = a[i].(string)
 			if !ok {
 				return nil, fmt.Errorf("Unrecognized validation data type []%T. Expected []string", a[i])
 			}
@@ -82,7 +82,6 @@ func interfaceToStringTuple(o interface{}) ([]string, error) {
 	}
 	return s, nil
 }
-
 
 // rangeRecordChecker
 
