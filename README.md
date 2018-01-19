@@ -132,12 +132,12 @@ if err != nil {
 err = rs.Publish(ctx, iprsKey, record2)
 ```
 
-#### Retrieving a record value
+#### Resolving an IPRS path to its target Node
 
 ```go
 iprsPath := GetIprsPath()
-val, path, err := rs.Resolve(ctx, iprsPath)
-fmt.Printf("Value %s with path %s", val, path)
+nodeLink, path, err := rs.Resolve(ctx, iprsPath)
+fmt.Printf("Link with CID %s and path %s", nodeLink.Cid, path)
 ```
 
 ### Using Gx and Gx-go
