@@ -176,6 +176,11 @@
       "hash": "QmNwUEK7QbwSqyKBu3mMtToo8SUc6wQJ7gdZq4gGGJqfnf",
       "name": "go-ipld-format",
       "version": "0.5.2"
+    },
+    {
+      "hash": "Qmajzb6i5uwyfzcBtdqHYx94qSAMKZHBFouGV1xVbAKES9",
+      "name": "go-ipld-git",
+      "version": "0.1.5"
     }
   ],
   "gxVersion": "0.12.1",
