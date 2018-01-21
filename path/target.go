@@ -9,47 +9,43 @@ import (
 )
 
 // Target record value can be
+// - Raw cid bytes
+//   <cid bytes>
+// - CID string with optional subpath
+//   <cid string>/sub/path
+// - IPFS Path with B58 encoded hash string and optional subpath
+//   /ipfs/<b58 hash>/sub/path
 // - Old style IPNS record
-//   <raw byte hash pointing to IPFS node>
-// - Path with cid
-//   /ipfs/<cid>
-// - Raw cid
-//   <cid>
+//   <multihash bytes> pointing to ipfs node
 func ParseTargetToCid(val []byte) (*cid.Cid, []string, error) {
-	// Check for old style IPNS record
-	valh, err := mh.Cast(val)
-	if err == nil {
-		// Its an old style multihash record pointing to an IPFS node
-		return cid.NewCidV0(valh), []string{}, nil
-	}
-
 	// Try casting raw bytes to a CID
 	c, err := cid.Cast(val)
 	if err == nil {
 		return c, []string{}, nil
 	}
 
-	// Not a raw multihash or CID, check for stringified CID
+	// Check if it's an IPFS path with a B58 encoded hash
 	valstr := string(val)
-
-	// If it has no path components try parsing it as a cid
-	if !strings.Contains(valstr, "/") {
-		c, err = cid.Parse(valstr)
-		if err != nil {
-			return nil, nil, fmt.Errorf("Could not parse CID from target [%s]", valstr)
-		}
-		return c, []string{}, nil
-	}
-
-	// Split it up into parts and extract the CID
 	parts := strings.Split(valstr, "/")
-	if len(parts) < 3 || parts[0] != "" {
-		return nil, nil, fmt.Errorf("Could not parse target [%s]", valstr)
-	}
-	c, err = cid.Decode(parts[2])
-	if err != nil {
-		return nil, nil, fmt.Errorf("Could not parse CID from target [%s]", valstr)
+	if len(parts) > 2 && parts[0] == "" && parts[1] == "ipfs" {
+		c, err = cid.Decode(parts[2])
+		if err == nil {
+			return c, parts[3:], nil
+		}
 	}
 
-	return c, parts[3:], nil
+	// Check if it's a string encoded CID (optionally followed by a path)
+	c, err = cid.Parse(parts[0])
+	if err == nil {
+		return c, parts[1:], nil
+	}
+
+	// Check if it's an old style IPNS record (raw multihash bytes)
+	valh, err := mh.Cast(val)
+	if err == nil {
+		// Its an old style multihash record pointing to an IPFS node
+		return cid.NewCidV0(valh), []string{}, nil
+	}
+
+	return nil, nil, fmt.Errorf("Could not parse target [%s]", valstr)
 }
