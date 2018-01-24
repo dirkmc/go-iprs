@@ -23,7 +23,7 @@ Note that `go-iprs` is packaged with Gx, so it is recommended to use Gx to insta
 
 ## Usage
 
-IPRS Records are created with a [RecordValidity](https://github.com/dirkmc/go-iprs/blob/master/record/record.go#L20) and a [RecordSigner](https://github.com/dirkmc/go-iprs/blob/master/record/record.go#L33). `RecordValidity` indicates under what conditions the record is considered valid, for example before a certain date ([EOL](https://github.com/dirkmc/go-iprs/blob/master/record/eol.go)) or between certain dates ([TimeRange](https://github.com/dirkmc/go-iprs/blob/master/record/range.go)). `RecordSigner` adds verification data to a record, by signing it, eg with a [private key](https://github.com/dirkmc/go-iprs/blob/master/record/key.go), or with an [x509 certificate](https://github.com/dirkmc/go-iprs/blob/master/record/cert.go).
+IPRS Records are created with a [RecordValidation](https://github.com/dirkmc/go-iprs/blob/master/record/record.go#L17) and a [RecordSigner](https://github.com/dirkmc/go-iprs/blob/master/record/record.go#L32). `RecordValidation` indicates under what conditions the record is considered valid, for example before a certain date ([EOL](https://github.com/dirkmc/go-iprs/blob/master/record/eol.go)) or between certain dates ([TimeRange](https://github.com/dirkmc/go-iprs/blob/master/record/range.go)). `RecordSigner` adds verification data to a record, by signing it, eg with a [private key](https://github.com/dirkmc/go-iprs/blob/master/record/key.go), or with an [x509 certificate](https://github.com/dirkmc/go-iprs/blob/master/record/cert.go).
 
 The record is published to a path that consists of a validation CID (eg CID of a public key) and an ID, eg `/iprs/<cid>/photos`
 
