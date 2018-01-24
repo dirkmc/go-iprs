@@ -27,6 +27,13 @@ IPRS Records are created with a [RecordValidity](https://github.com/dirkmc/go-ip
 
 The record is published to a path that consists of a validation CID (eg CID of a public key) and an ID, eg `/iprs/<cid>/photos`
 
+The record value is the path to an IPLD node in the block store. It can be
+- an IPFS path eg `/ipfs/<B58hash>/some/path`
+- the raw bytes of a CID pointing to an IPLD node
+- a CID in string format with an optional path, eg `<cid>/some/path`
+- an IPNS path eg `/ipns/ipfs.io/some/path` or `/ipns/<B58hash>/some/path`
+- an IPRS path eg `/iprs/<cid>/photos/3/size`
+
 ### Examples
 
 Records created with the [KeyRecordSigner](https://github.com/dirkmc/go-iprs/blob/master/record/key.go) have a `BasePath()` at `/iprs/<key hash>`
