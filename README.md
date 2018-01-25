@@ -23,16 +23,16 @@ Note that `go-iprs` is packaged with Gx, so it is recommended to use Gx to insta
 
 ## Usage
 
-IPRS Records are created with a [RecordValidation](https://github.com/dirkmc/go-iprs/blob/master/record/record.go#L17) and a [RecordSigner](https://github.com/dirkmc/go-iprs/blob/master/record/record.go#L32). `RecordValidation` indicates under what conditions the record is considered valid, for example before a certain date ([EOL](https://github.com/dirkmc/go-iprs/blob/master/record/eol.go)) or between certain dates ([TimeRange](https://github.com/dirkmc/go-iprs/blob/master/record/range.go)). `RecordSigner` adds verification data to a record, by signing it, eg with a [private key](https://github.com/dirkmc/go-iprs/blob/master/record/key.go), or with an [x509 certificate](https://github.com/dirkmc/go-iprs/blob/master/record/cert.go).
-
-The record is published to a path that consists of a validation CID (eg CID of a public key) and an ID, eg `/iprs/<cid>/photos`
+IPRS Records are published to a path that consists of a validation CID (eg CID of a public key) and an ID, eg `/iprs/<cid>/photos`
 
 The record value is the path to an IPLD node in the block store. It can be
 - an IPFS path eg `/ipfs/<B58hash>/some/path`
 - the raw bytes of a CID pointing to an IPLD node
 - a CID in string format with an optional path, eg `<cid>/some/path`
-- an IPNS path eg `/ipns/ipfs.io/some/path` or `/ipns/<B58hash>/some/path`
-- an IPRS path eg `/iprs/<cid>/photos/3/size`
+- an IPNS path eg `/ipns/<B58hash>/some/path` or `/ipns/ipfs.io/some/path`
+- an IPRS path eg `/iprs/<cid>/photos/3/size` or `/iprs/ipfs.io/some/path`
+
+Records are created with a [RecordValidation](https://github.com/dirkmc/go-iprs/blob/master/record/record.go#L17) and a [RecordSigner](https://github.com/dirkmc/go-iprs/blob/master/record/record.go#L32). `RecordValidation` indicates under what conditions the record is considered valid, for example before a certain date ([EOL](https://github.com/dirkmc/go-iprs/blob/master/record/eol.go)) or between certain dates ([TimeRange](https://github.com/dirkmc/go-iprs/blob/master/record/range.go)). `RecordSigner` adds verification data to a record, by signing it, eg with a [private key](https://github.com/dirkmc/go-iprs/blob/master/record/key.go), or with an [x509 certificate](https://github.com/dirkmc/go-iprs/blob/master/record/cert.go).
 
 ### Examples
 
